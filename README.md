@@ -404,6 +404,26 @@ ShadowGraff, DeepSeek
 
 ---
 
+## 商标声明 / Trademark notice
+
+**DeepSeek 是杭州深度求索人工智能基础技术研究有限公司的商标。**
+
+本项目在作者署名与开发说明中提及该名称，**仅用于说明本项目所调用的 AI 服务的来源**。此提及**不代表深度求索公司对本项目的任何赞助、认可、担保或官方关联**；本项目为个人独立作品，与深度求索公司无任何隶属或合作关系。
+
+如需了解该服务的相关条款，请参阅 [DeepSeek 用户协议](https://cdn.deepseek.com/policies/zh-CN/deepseek-terms-of-use.html)。
+
+**DeepSeek is a trademark of Hangzhou DeepSeek Artificial Intelligence Basic Technology Research
+Co., Ltd.**
+
+The name is referenced in this project's authorship line and development note **solely to identify
+the source of the AI service used**. This reference **does not imply any sponsorship, endorsement,
+warranty, or official affiliation with DeepSeek**; this project is an independent work by an
+individual and has no affiliation or partnership with the company.
+
+For the service's own terms, see the [DeepSeek Terms of Use](https://cdn.deepseek.com/policies/en-US/deepseek-terms-of-use.html).
+
+---
+
 ## 开发说明 / Development note
 
 本 README 由 AI 生成。模组本身同样如此：**全部实现代码由 AI 编写**，而**灵感、大部分设计，以及全部 BUG 测试均来自人类开发者**。
@@ -420,7 +440,7 @@ The division of labour:
 |---|---|
 | 灵感与目标 / Idea and goals | 人类 / Human |
 | 大部分设计 / Most of the design | 人类 / Human |
-| 实现代码 / Implementation code | AI |
+| 实现代码 / Implementation code | AI（DeepSeek，见[商标声明](#商标声明--trademark-notice)）/ AI (DeepSeek — see the [trademark notice](#商标声明--trademark-notice)) |
 | BUG 测试 / Bug testing | 人类 / Human |
 | 日志分析与修复 / Log analysis and fixes | AI |
 
