@@ -1,0 +1,24 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.undying.core.mixin",
+  "plugin": "com.undying.core.UndyingMixinPlugin",
+  "mixins": [
+    "MixinServerPlayer",
+    "MixinCommands",
+    "MixinLivingEntity",
+    "MixinEntity",
+    "MixinPlayerList",
+    "MixinAntiTamper",
+    "MixinAntiTamperXp",
+    "LivingEntityDeathTimerAccess",
+    "MixinSynchedEntityDataHealth",
+    "SynchedEntityDataOwnerAccess"
+  ],
+  "client": [
+    "client.MixinTotemSoundMute",
+    "client.MixinScreenMultiplayerBan",
+    "MixinIntegratedServerLan"
+  ],
+  "server": []
+}

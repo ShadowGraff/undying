@@ -1,0 +1,24 @@
+# Normalise line endings on commit.
+#
+# Without this, Git on Windows rewrites LF to CRLF in the working copy, and the
+# repository ends up storing whatever the last machine happened to use. Source files
+# then show the entire file as changed the first time someone on Linux touches them.
+#
+# The rule: LF in the repository, always. Windows tooling that needs CRLF (batch
+# files) is listed explicitly below.
+* text=auto eol=lf
+
+# Windows batch and PowerShell scripts must keep CRLF to run correctly.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary — never touch these.
+*.jar binary
+*.png binary
+*.gif binary
+*.dat binary
+*.ogg binary
+
+# Generated lock files are text but should not be merged line-by-line.
+gradle-wrapper.jar binary
