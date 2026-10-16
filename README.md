@@ -1,381 +1,400 @@
 # Undying
 
-**不死防护模组 —— 一个单人游戏专用的作弊模组，并且被刻意锁死在单人。**
-**No-death protection for Minecraft — a single-player cheat, built to stay that way.**
+**Minecraft 1.20.1 · Forge 47.x · Java 17 · MIT**
 
-Minecraft 1.20.1 · Forge 47.x · Java 17 · MIT
+---
+
+## 适用场景 / Intended use
+
+本模组适用于以下情况：
+
+This mod is intended for the following situations:
+
+- **还想继续长期游玩、或对你有特殊意义的存档，被其他模组压制成死档。** 某些模组的战斗数值强到「进入即死」，此时即使有存档备份也无法解决：读档后死亡仍然必然发生，世界无法继续。本模组通过移除死亡结果来解除这一状态，让这类存档重新可以游玩。
+- **不敢玩恐怖模组，但又希望亲自体验。** 部分恐怖模组的演出效果很好，但玩家因害怕而无法推进流程。开启无敌模式后可以在不被打断的情况下完整看完演出。
+- **反向碾压。** 单纯体验以绝对优势对抗原本难以应对的内容。
+
+- **A save you still want to keep playing, or that matters to you, rendered unplayable by another
+  mod.** Some mods reach combat values where entering the fight means certain death. A save backup
+  does not solve this: after loading, the death still happens on schedule and the world cannot
+  continue. This mod removes the death outcome, which makes such a save playable again.
+- **Not daring to play a horror mod, but wanting to experience it first-hand.** Some horror mods
+  are built around excellent set pieces, but the player cannot get through them out of fear. With
+  immortal mode on, the sequence can be watched in full without interruption.
+- **Reversed dominance.** Playing purely for the experience of overwhelming content that would
+  otherwise be difficult.
+
+**不适用于：**对战类玩法、希望保留正常难度的生存流程，以及任何联机场景。
+
+**Not intended for:** competitive play, survival runs where the normal difficulty is the point, or
+any multiplayer scenario.
+
+这不是「存档修复工具」。它不修复损坏的区块、不恢复已丢失的实体数据，也不修复存档文件本身。它做的是在玩家死亡时回滚玩家状态，使其不产生死亡的后果。
+
+This is not a save-repair tool. It does not repair corrupted chunks, recover lost entity data, or
+repair the save files themselves. What it does is roll back player state when the player dies, so
+that the death produces no consequence.
 
 ---
 
 ## 这是什么 / What this is
 
-这是一个 Forge 模组：在**单人游戏**里让你几乎死不掉，同时**彻底拒绝参与联机**。
+一个面向单人世界的「神权」模组：开启无敌模式后，玩家在该世界内不受死亡与伤害规则约束。
 
-This is a Forge mod that makes you genuinely hard to kill in **single-player**, and refuses to
-participate in multiplayer at all.
+A single-player "god-mode" mod: with immortal mode enabled, the player is not subject to death
+or damage rules in that world.
 
-**这就是一个作弊模组，我们一开始就说清楚。** 它不是战斗重做，不是难度选项，也不平衡。它写给这样一类玩家：想看完一场 Boss 战却不想死在里面、想走进深邃洞穴看看那儿到底有什么、或者想在一个动不动就秒杀你的整合包里活下来。
+关闭无敌模式后，本模组不介入任何游戏逻辑，等同于正常单人游戏。
 
-This is a **cheat**, and it says so up front. It is not a combat overhaul, not a difficulty
-option, and not balanced. It is for players who want to watch a boss fight play out without
-dying to it, walk into the Deep Dark to see what is there, or survive a modpack that keeps
-one-shotting them.
+With immortal mode disabled, the mod does not intervene in any game logic and the world behaves
+as an ordinary single-player game.
 
-因为「你死不掉」恰恰是最能毁掉一整台服务器的东西，所以这个模组**从设计上就是单人专用** —— 见下方[联机](#联机被禁用--multiplayer-is-disabled)。
+**本模组不支持联机。** 详见[联机](#联机--multiplayer)。
 
-Because "you cannot die" is exactly the kind of thing that ruins a server for everyone else,
-the mod is **single-player only by construction** — see [Multiplayer](#联机被禁用--multiplayer-is-disabled)
-below.
+**This mod does not support multiplayer.** See [Multiplayer](#联机--multiplayer).
 
 ---
 
-## 功能 / Features
+## 概述 / Overview
 
-**所有功能默认关闭**，要打开总开关才会生效。没有任何一项会自己启动。
+本模组由两组互相独立的功能组成：
 
-Everything is off until you turn on the master switch. Nothing here activates by itself.
+This mod consists of two independent groups of features:
 
-### 死亡锁 —— 这个模组存在的理由 / Death lock — the reason this mod exists
-
-四层独立防护，任意一层拦住，你就死不了。
-
-Four independent layers. Any one of them holding is enough to stop a death.
-
-| 层 / Layer | 作用 / What it does |
+| 分组 / Group | 说明 / Description |
 |---|---|
-| 1. 拒绝伤害 | 血量触底时，这一击**根本不被接受** —— 不扣血、不触发事件、不击退 |
-| 2. 血量闸门 | 血量数据的唯一写入口；任何想把血量写到保底线以下的代码，都会被抬回去 |
-| 3. `die()` 取消 | 死亡流程被取消并倒带 —— 计时器清零、血量恢复、图腾效果退还 |
-| 4. 移除拦截 | 拦住 `remove(KILLED)` 与 `kill()` |
+| 无敌模式 / Immortal mode | 在单人世界内解除死亡、伤害、物品栏与游戏模式约束。由总开关 `masterToggle` 统一控制<br>Lifts death, damage, inventory and game-mode constraints inside a single-player world. Controlled by the `masterToggle` master switch |
+| 状态回滚 / State rollback | 定期备份玩家状态，并在检测到死亡或状态异常时回滚。不经过原版的 `hurt` / `setHealth` / `die` / `kill`，因此当其他模组改写了原版方法链时仍然可用<br>Periodically backs up player state and rolls it back when death or state corruption is detected. It does not go through vanilla's `hurt` / `setHealth` / `die` / `kill`, so it keeps working when another mod has rewritten that pipeline |
 
-| 层 / Layer | 作用 / What it does |
+**总开关默认开启**（`masterToggle = true`）。设为 `false` 后模组不介入任何游戏逻辑。
+
+**The master switch defaults to on** (`masterToggle = true`). Set it to `false` and the mod does
+not intervene in any game logic.
+
+---
+
+## 无敌模式 / Immortal mode
+
+### 开关 / Toggling
+
+| 方式 / Method | 操作 / Action |
 |---|---|
-| 1. Damage refusal | At the health floor, the hit is not accepted at all — no damage, no event, no knockback |
-| 2. Health clamp | The only write path to health data; any code that tries to set health below the floor is pushed back up |
-| 3. `die()` cancellation | The death pipeline is cancelled and rewound — timer cleared, health restored, totem effect refunded |
-| 4. Removal interception | Blocks `remove(KILLED)` and `kill()` |
+| 聊天框 / Chat | `toggle` 或 `无敌` / `toggle` or `无敌` |
+| 指令 / Command | `/antigrief master` |
+| 配置文件 / Config | `config/undying-common.toml` 中的 `masterToggle` / `masterToggle` in `config/undying-common.toml` |
 
-> **第 1 层是「拒绝」，不是「回血」。** 一旦原版死亡动画开始，改血量是停不下来的 —— 你会卡在「半死不活」状态：服务端认为你活着，却每 50 毫秒尝试移除你一次。直接拒绝这一击，能彻底绕开这个问题。
->
-> **Layer 1 refuses rather than heals.** Once vanilla's death animation starts, editing health
-> does not stop it — you end up in a half-dead state where the server thinks you are alive and
-> tries to remove you every 50 ms. Refusing the damage avoids that entirely.
+开启后聊天栏会输出 `无敌模式：开启`，关闭时输出 `无敌模式：关闭`。
 
-> **第 4 层只拦 `KILLED`，绝不拦 `DISCARDED`。** `DISCARDED` 是原版换维度、重生时的正常清理。拦它会让世界里出现两个你，随后区块管理器直接 NPE。
->
-> **Layer 4 blocks `KILLED`, never `DISCARDED`.** `DISCARDED` is the normal cleanup used when
-> changing dimension or respawning. Blocking it puts two of you in the world and then crashes
-> the chunk manager.
+On enable the chat reports `无敌模式：开启`; on disable, `无敌模式：关闭`.
 
-**唯一真正的死法：** `/antigrief die`，或者聊天框自杀触发词。这条通道**刻意永不拦截** —— 想死的时候死不掉，本身就是另一种陷阱。
+### 死亡锁 / Death lock
 
-**The one way to actually die:** `/antigrief die`, or the suicide chat trigger. That channel is
-deliberately never blocked — being unable to die when you want to is its own kind of trap.
+四层独立机制。任意一层生效即可阻止死亡。
 
-### 隐藏槽与隐藏装备 / Hidden slots and gear
+Four independent mechanisms. Any one of them holding prevents a death.
 
-三个玩家看不见、摸不着、丢不掉、指令也剥夺不了的槽位：
+| 层 / Layer | 机制 / Mechanism | 说明 / Notes |
+|---|---|---|
+| 1 | 拒绝伤害 / Damage refusal | 血量到达保底线时，该次伤害不被接受：不扣血、不触发事件、不产生击退<br>At the health floor the hit is not accepted: no damage, no event, no knockback |
+| 2 | 血量闸门 / Health clamp | 血量同步数据的唯一写入口。任何把血量写到保底线以下的尝试都会被抬回<br>The only write path to synched health data; any attempt to write below the floor is pushed back up |
+| 3 | `die()` 取消 / Cancellation | 取消死亡流程并回滚：清除死亡计时器、恢复血量、退还图腾效果<br>Cancels and rewinds the death pipeline: timer cleared, health restored, totem effect refunded |
+| 4 | 移除拦截 / Removal interception | 拦截 `remove(KILLED)` 与 `kill()`<br>Intercepts `remove(KILLED)` and `kill()` |
 
-Three slots the player cannot see, touch, drop, or have stripped by commands:
+**第 1 层采用「拒绝」而非「事后回血」。** 原版死亡动画（`tickDeath`）一旦启动，修改血量无法中止该流程，玩家会停留在服务端认为存活、但每 50 毫秒被尝试移除一次的状态。在伤害入口直接拒绝可以避免该状态。
 
-- **隐藏图腾** —— 一个真正的图腾，走原版自己的触发流程，所以事件、音效、粒子全都正常
-- **守护神盾** —— 360° 全伤害免疫，无限耐久
-- **隐藏盔甲** —— 不进入真实盔甲栏；它的数值被注入，所以整套下界合金(20)生效却不占槽位
+**Layer 1 refuses rather than heals.** Once vanilla's death animation (`tickDeath`) has started,
+editing health does not stop it; the player ends up in a state where the server considers them
+alive while attempting removal every 50 ms. Refusing the damage at the entry point avoids this.
 
-- **Hidden totem** — a real totem of undying, triggered through vanilla's own flow, so events,
-  sound and particles all behave correctly
-- **Ward shield** — 360° immunity to all damage, unlimited durability
-- **Hidden armour** — never enters the real armour bar; its value is injected so a full
-  netherite set (20) applies without occupying a slot
+**第 4 层只拦截 `KILLED`，不拦截 `DISCARDED`。** `DISCARDED` 是原版换维度与重生流程的正常清理路径；拦截它会导致同一玩家在世界上出现两份实体，并在随后触发区块管理器空指针异常。
 
-隐藏装备上的附魔按原版公式手动结算 —— 因为原版读不到一个它不知道存在的槽位里的附魔：
+**Layer 4 intercepts `KILLED` only, never `DISCARDED`.** `DISCARDED` is vanilla's normal cleanup
+path for dimension changes and respawns; intercepting it produces two entities for the same
+player and subsequently a null-pointer exception in the chunk manager.
 
-Enchantments on hidden gear are resolved manually using vanilla formulas, because vanilla
-cannot read enchantments out of a slot it does not know exists:
+**解除死亡锁的方式：**`/antigrief die`，或聊天框自杀触发词。该路径不经过死亡锁，使其始终可用。
 
-| 附魔 / Enchantment | 效果 / Effect |
+**Releasing the death lock:** `/antigrief die`, or the suicide chat trigger. This path bypasses
+the death lock so that it remains available at all times.
+
+### 隐藏槽位 / Hidden slots
+
+三个玩家不可见、不可操作、不可通过指令移除的槽位。
+
+Three slots that are not visible to the player, cannot be manipulated, and cannot be removed by
+commands.
+
+| 槽位 / Slot | 内容 / Contents | 行为 / Behaviour |
+|---|---|---|
+| 隐藏图腾 / Hidden totem | 不死图腾 / Totem of undying | 通过原版机制触发，事件、音效、粒子表现与原版一致<br>Triggered through vanilla's own mechanism; events, sound and particles behave as vanilla |
+| 守护神盾 / Ward shield | 全伤害免疫 / Full damage immunity | 360° 伤害免疫，无限耐久<br>360° immunity to all damage, unlimited durability |
+| 隐藏盔甲 / Hidden armour | 下界合金护甲值 / Netherite armour value | 不占用真实盔甲栏；护甲值以注入方式计入，等效整套下界合金(20)<br>Does not occupy the real armour bar; the value is injected, equivalent to a full netherite set (20) |
+
+隐藏槽位内的附魔无法被原版读取，因此按原版公式单独结算：
+
+Enchantments inside hidden slots are not readable by vanilla, so they are resolved separately
+using vanilla formulas:
+
+| 附魔 / Enchantment | 结算公式 / Formula |
 |---|---|
 | 保护 / Protection | 每级 4%，上限 80% / 4% per level, capped at 80% |
 | 摔落保护 / Feather Falling | 每级 12%，上限 80% / 12% per level, capped at 80% |
-| 荆棘 / Thorns | 原版 `ThornsEnchantment` 公式 / Vanilla `ThornsEnchantment` formula |
+| 荆棘 / Thorns | 同原版 `ThornsEnchantment` / Same as vanilla `ThornsEnchantment` |
 | 水下呼吸 / Respiration | 氧气不消耗，持续补充 / Oxygen never consumed, continuously refilled |
-| 水下速掘 / Aqua Affinity | 取消水下挖掘的 5 倍减速 / Removes the 5× underwater mining penalty |
+| 水下速掘 / Aqua Affinity | 抵消水下挖掘的 5 倍减速 / Cancels the 5× underwater mining penalty |
 
-`hiddenGear` 额外在每个存档首次进入时，发放一整套下界合金装备与工具。
+未实现的附魔：迅捷潜行、深海探索者、灵魂疾行。这三项会改变移动手感与画面表现。
 
-`hiddenGear` additionally grants a full netherite set with tools, once per save, on first join.
+Not implemented: Swift Sneak, Depth Strider, Soul Speed. These change movement feel and visual
+presentation.
+
+### 隐藏装备发放 / Hidden gear grant
+
+`hiddenGear` 开启时，每个存档首次进入世界发放一整套下界合金装备与工具。装备可正常脱下与丢弃。
+
+With `hiddenGear` enabled, a full netherite set and tools are granted on first join per save. The
+items can be removed and dropped normally.
 
 ### 虚空剑 / Void Sword
 
-聊天框输入 `sword` / `取剑` 获取。
+聊天框输入 `sword` 或 `取剑` 获取。
 
 Obtained with the `sword` / `取剑` chat trigger.
 
-- **右键** —— 清除周围 5 格内所有实体
-- **左键** —— 启动四层执行链，逐层递进直到目标真正死亡：满伤害 → 强制移除 → 数据清空 → 和平模式。每一层之后都会验尸，确认目标真的进入了死亡流程
+| 操作 / Action | 效果 / Effect |
+|---|---|
+| 右键 / Right click | 清除周围 5 格内所有实体<br>Clears every entity within 5 blocks |
+| 左键 / Left click | 对目标启动四层执行链：满伤害 → 强制移除 → 数据清空 → 和平模式<br>Starts the four-layer execution chain on the target: full damage → forced removal → data wipe → peaceful mode |
 
-- **Right click** — clears every entity within 5 blocks
-- **Left click** — starts a four-layer execution chain that escalates until the target is
-  genuinely dead: full damage → forced removal → data wipe → peaceful mode. Each layer is
-  followed by a check that the target really entered the death pipeline.
+执行链每一层结束后都会校验目标是否已进入死亡流程；未进入则进入下一层。分层的原因是不同环境下被拦截的环节不同。
+
+Each layer of the execution chain is followed by a check that the target entered the death
+pipeline; if not, the next layer runs. The chain is layered because different environments
+intercept different mechanisms.
+
+执行链不对 `Player` 类型目标做特殊处理。早期版本会在此处互相忽略以规避 PvP，该行为可被「把实体注册为玩家类型」的模组利用为免死手段，因此已移除。
+
+The chain applies no special handling to `Player`-type targets. An earlier version made two
+players ignore each other here to avoid PvP; that behaviour could be exploited as a death
+immunity by registering an entity as a player type, and was removed.
 
 ### 光环 / Aura
 
-清除半径内的敌对生物。**刻意排除末影龙、凋灵与监守者** —— 在战斗中移除它们会破坏世界进程。
+清除半径内的敌对生物。
 
-Clears hostile mobs in a radius. Deliberately **excludes the Ender Dragon, Wither and Warden** —
-removing those mid-fight breaks world progression.
+Clears hostile mobs in a radius.
 
-- 限时激活，或常驻模式
-- 通过 `deathAura` 开关启用自动模式
+| 触发词 / Trigger | 效果 / Effect |
+|---|---|
+| `aura` / `光环` | 激活，限时 / Activate, timed |
+| `aura on` / `光环常驻` | 切换为常驻 / Switch to permanent |
+| `aura off` / `光环关闭` | 关闭 / Disable |
 
-- Timed activation, or permanent mode
-- Automatic mode via the `deathAura` switch
+半径上限为 `Const.AURA_RANGE`。末影龙、凋灵与监守者不在清除范围内：在战斗中移除这些实体会中断世界进程。
+
+The radius is capped at `Const.AURA_RANGE`. The Ender Dragon, Wither and Warden are excluded:
+removing them mid-fight interrupts world progression.
+
+`deathAura` 开启时自动模式常驻，无需手动触发。
+
+With `deathAura` enabled the aura runs automatically without a manual trigger.
 
 ### 保命辅助 / Survival assistance
 
-| 功能 / Feature | 效果 / Effect |
+| 功能 / Feature | 说明 / Description |
 |---|---|
-| 虚空救援 / Void rescue | 掉到 y=-100 以下时传回安全点 —— 优先床/重生锚，没设过则回世界出生点，维度跟着走 / Below y=-100, teleports you back to a safe point — bed or respawn anchor first, else world spawn, following your dimension |
-| 出生保护 / Spawn protection | 进世界或重生后短暂完全免伤 / Brief full immunity after joining or respawning |
-| 常驻增益 / Permanent effects | 吸收、再生、抗性提升、抗火 / Absorption, Regeneration, Resistance, Fire Resistance |
-| 存档急救包 / Save snapshot | 定期备份玩家状态到 `_undying_backup/<uuid>.dat`，检测到死亡或被毁时自动恢复 / Periodic player-state backup to `_undying_backup/<uuid>.dat`, restored automatically when death or corruption is detected |
+| 虚空救援 / Void rescue | 玩家低于 y=-100 时传送回安全点。优先床或重生锚，未设置则回世界出生点，维度跟随玩家<br>Below y=-100, teleports to a safe point: bed or respawn anchor first, else world spawn, following the player's dimension |
+| 出生保护 / Spawn protection | 进入世界或重生后短时间内完全免伤，时长由 `spawnProtectTicks` 控制，默认 120 tick<br>Brief full damage immunity after joining or respawning; duration set by `spawnProtectTicks`, default 120 ticks |
+| 常驻增益 / Permanent effects | 吸收、再生、抗性提升、抗火<br>Absorption, Regeneration, Resistance, Fire Resistance |
 
-> **为什么需要这一层。** 上面所有防护都挂在原版的调用链上。如果那一整条链被 coremod 改写，所有钩子会**同时失效**。所以这一层换赛道：采集、落盘、恢复 —— 完全不碰 `hurt`、`setHealth`、`die`、`kill`。
->
-> **Why the snapshot layer exists.** Every other protection hangs off vanilla's call chain. If a
-> coremod rewrites that whole chain, all the hooks go dead at once. So this layer takes a
-> different road: collect, write to disk, restore — never touching `hurt`, `setHealth`, `die` or
-> `kill`.
+常驻增益不含夜视与饱和：这两项会改变画面亮度并遮挡饥饿条。
 
-> **它诚实的边界。** 面对专门重写本类的 JVMTI 运行时 Agent，进程内没有方案能赢，包括这一层。它能打赢的是「coremod 改写原版方法」，并把绕过成本抬上去。这不是「绝对安全」的承诺。
->
-> **Its honest limit.** Against a JVMTI runtime agent that specifically rewrites this class,
-> nothing in-process wins, including this. What it does beat is coremod rewriting of vanilla
-> methods, and it raises the cost of going around it. It is not a promise of absolute safety.
+Permanent effects exclude Night Vision and Saturation: both alter screen brightness and obscure
+the hunger bar.
 
-### 完整性守卫与自检 / Integrity guard and self-check
+### 完整性守卫 / Integrity guard
 
-- 每 2 秒核对配置开关有没有被外部改回，是则自动修复
-- 用 12 条只读探针核对依赖的原版结构还在不在、mixin 有没有真的挂上、防护总开关有没有真的开着 —— 然后把结果明确报出来
+每 2 秒核对配置开关是否被外部修改，若被修改则自动恢复并报告。
 
-- Re-verifies every 2 seconds that config switches have not been flipped externally, and repairs
-  them if they have
-- Runs 12 read-only probes over the vanilla structures it depends on, confirms its mixins are
-  actually attached, and confirms the protection switch is really on — then reports the result
+Every 2 seconds, verifies that config switches have not been modified externally; if they have,
+restores them and reports.
 
-> 自检**只读，并且永远说真话** —— 包括答案是「防护当前什么都没做」的时候。一个会说谎的诊断，比没有诊断更糟。
->
-> The self-check is **read-only and always tells you the truth**, including when the answer is
-> "protection is currently doing nothing". A diagnostic that can lie is worse than no
-> diagnostic.
+比对范围不含 `damageBoost` 与 `deathAura`：这两项由玩家自行决定，修改它们不属于篡改。
+
+The comparison excludes `damageBoost` and `deathAura`: these are player choices, and changing
+them is not tampering.
 
 ---
 
-## 联机被禁用 / Multiplayer is disabled
+## 状态回滚 / State rollback
 
-**这个模组在联机下不工作，并且会主动阻止自己被用在联机里。**
+### 存档急救包 / Save snapshot
 
-**This mod does not work in multiplayer, and actively prevents itself from being used there.**
+| 配置项 / Option | 说明 / Description |
+|---|---|
+| `enabled` | 总开关 / Master switch |
+| `autoRestore` | 检测到死亡或状态异常时自动回滚 / Roll back automatically when death or state corruption is detected |
+| `intervalTicks` | 采集间隔，默认 100 tick（5 秒）/ Capture interval, default 100 ticks (5 seconds) |
 
-原因不是政策，而是功能本身：把它装到服务器上，等于给那台服务器上每个玩家发无敌。
+玩家状态定期写入世界目录下的 `_undying_backup/<uuid>.dat`。检测到死亡或状态异常时，从该文件回滚。
 
-The reason is not policy, it is the feature: installing this on a server hands invulnerability
-to every player on it.
+Player state is periodically written to `_undying_backup/<uuid>.dat` inside the world directory.
+When death or state corruption is detected, state is rolled back from that file.
 
-有两层互相独立的机制在拦这件事。
+**回滚的是玩家状态，不是存档。** 具体包括位置、血量、物品栏、经验等玩家自身数据。世界数据（区块、实体、方块）不在回滚范围内。
 
-Two independent layers enforce it.
+**What is rolled back is player state, not the save.** Specifically the player's own data: position,
+health, inventory, experience. World data — chunks, entities, blocks — is not covered.
 
-### 1. 入口关掉（客户端）/ The entrances are closed (client)
+**该功能不经过原版的 `hurt` / `setHealth` / `die` / `kill`。** 其余防护均挂在原版方法调用链上；若该调用链被 coremod 整体改写，这些钩子会同时失效。存档急救包通过直接读写字段与文件实现，因此不受该情况影响。
 
-主菜单的**多人游戏**按钮和暂停菜单的**对局域网开放**按钮会被**灰掉**、点不动，并附带说明原因的悬浮提示。
+**This feature does not go through vanilla's `hurt` / `setHealth` / `die` / `kill`.** Every other
+protection hangs off vanilla's method call chain; if a coremod rewrites that chain wholesale,
+those hooks fail together. The save snapshot reads and writes fields and files directly, so it is
+unaffected.
+
+**能力边界：**针对本类专门编写的 JVMTI 运行时 Agent 可以绕过该功能。本功能覆盖的范围是「coremod 改写原版方法」这一类情况，不构成绝对安全保证。
+
+**Limitation:** a JVMTI runtime agent written specifically against this class can bypass it. This
+feature covers the case of a coremod rewriting vanilla methods; it is not a guarantee of absolute
+safety.
+
+---
+
+## 自检 / Self-check
+
+自检以只读方式运行，包含 10 条探针，核对以下内容：
+
+The self-check runs read-only and includes 10 probes, verifying:
+
+1. 依赖的原版结构是否存在 / that the vanilla structures it depends on exist
+2. mixin 是否已实际挂载 / that its mixins are actually attached
+3. 防护总开关是否处于开启状态 / whether the protection master switch is on
+
+结果会明确输出，包括结果为「防护当前未生效」的情况。
+
+The result is reported explicitly, including when the result is "protection is not currently
+active".
+
+---
+
+## 联机 / Multiplayer
+
+**本模组不工作于联机环境，并主动阻止自身被用于联机。**
+
+**This mod does not work in multiplayer and actively prevents itself from being used there.**
+
+原因不是策略选择，而是功能本身：该模组解除死亡与伤害规则，安装到服务器上会使该服务器上所有玩家同时获得该状态。
+
+The reason is not a policy choice but the feature itself: the mod lifts death and damage rules,
+so installing it on a server grants that state to every player on that server.
+
+两层互相独立的机制：
+
+Two independent mechanisms:
+
+### 1. 客户端入口拦截 / Client-side entrance ban
+
+主菜单的**多人游戏**按钮与暂停菜单的**对局域网开放**按钮被设为不可用状态，并附带说明原因的悬浮提示。
 
 The **Multiplayer** button on the title screen and the **Open to LAN** button in the pause menu
-are greyed out and unclickable, with a tooltip explaining why.
+are set to a disabled state, with a tooltip stating the reason.
 
-它们按**翻译键**（`menu.multiplayer`、`menu.shareToLan`）匹配，**不是按显示文字** —— 所以在任何语言下表现一致。按显示文字匹配会在任何非英文客户端上静默失效。
+匹配依据是**翻译键**（`menu.multiplayer`、`menu.shareToLan`），不是显示文本。按显示文本匹配会在非英文客户端上失效。
 
-They are matched by **translation key** (`menu.multiplayer`, `menu.shareToLan`), not by
-displayed text — so this works identically on every language. Matching rendered text would
-silently fail on any non-English client.
+Matching is by **translation key** (`menu.multiplayer`, `menu.shareToLan`), not by displayed text.
+Matching displayed text fails on any non-English client.
 
-### 2. 每个功能入口都有门禁（双端）/ Every feature entry point is gated (both sides)
+### 2. 功能入口门禁 / Feature entry-point gate
 
-`Environment.isAllowed(...)` 在 **19 处**被调用（分布在 13 个文件里）：聊天触发词、进入世界、每 tick 工作、指令、物品交互，以及**每一个可能碰到 `ServerPlayer` 的 mixin 注入点**。
+`Environment.isAllowed(...)` 在 19 处被调用，分布在 13 个文件中：聊天触发词、进入世界、每 tick 任务、指令、物品交互，以及所有可作用于 `ServerPlayer` 的 mixin 注入点。
 
-`Environment.isAllowed(...)` is consulted at **19 call sites across 13 files**: chat triggers,
-world join, per-tick work, commands, item interaction, and every mixin injector that can touch a
+`Environment.isAllowed(...)` is consulted at 19 call sites across 13 files: chat triggers, world
+join, per-tick work, commands, item interaction, and every mixin injector that can affect a
 `ServerPlayer`.
 
 | 环境 / Environment | 行为 / Behaviour |
 |---|---|
-| 单人游戏 / Single player | 正常工作 / works normally |
-| 开放到局域网 / Opened to LAN | 禁用 / disabled |
-| 加入远程服务器 / Joined a remote server | 禁用 / disabled |
-| 专用服务器 / Dedicated server | 禁用 / disabled |
+| 单人游戏 / Single player | 正常工作 / Works normally |
+| 开放到局域网 / Opened to LAN | 全部禁用 / All features disabled |
+| 加入远程服务器 / Joined a remote server | 全部禁用 / All features disabled |
+| 专用服务器 / Dedicated server | 全部禁用 / All features disabled |
 
-**失败时关闭（fail-closed）。** 如果环境无法判定，门禁报告「已拦截」。在单人里被误禁只是烦人；在服务器上被误开，才是这条规则存在要防的事。
+**判定失败时按「已拦截」处理。** 环境无法判定时门禁返回禁用。在单人环境下被误判禁用的后果是功能不可用；在服务器上被误判开启的后果是该服务器所有玩家获得不死状态。两者的代价不对称。
 
-**Fail-closed.** If the environment cannot be determined, the gate reports "blocked". Being
-wrongly disabled in single-player is an annoyance; being wrongly enabled on a server is the
-thing this exists to prevent.
+**Undetermined environments are treated as blocked.** If the environment cannot be determined,
+the gate returns "disabled". A false positive in single-player means the mod does not work; a
+false negative on a server means every player gains invulnerability. The costs are not symmetric.
 
-**它绝不让服务器崩溃。** 崩溃对开服的人是敌意行为，也会让这个模组看起来像恶意软件。门禁的做法是禁用一切，并在日志与聊天里**每个会话明说一次**。
+**门禁不会使服务器崩溃。** 判定为联机时，模组禁用全部功能，并在日志与聊天栏各输出一次说明。
 
-**It never crashes a server.** Crashing would be hostile to whoever runs it and would make this
-mod look like malware. The gate disables everything and states it plainly, once per session, in
-both the log and chat.
+**The gate does not crash a server.** When multiplayer is detected, the mod disables all features
+and writes one explanation to the log and one to chat.
 
-两层互补，谁也不能替代谁：GUI 拦截阻止玩家**抵达**联机，门禁覆盖「有人还是开了个装了它的服务器」这种情况。另外注意一个**刻意的不对称** —— GUI 拦截**失败时放行**（一个坏掉的菜单比一个没被拦的按钮更糟，而且门禁还在），而门禁**失败时关闭**。
+两层机制覆盖范围不同，不可互相替代：入口拦截阻止玩家进入联机界面；门禁处理「模组已被安装到服务器上」的情况。两者的失败方向也不同：入口拦截失败时保持按钮可用（不完整的界面比未拦截的按钮影响更大），门禁失败时按禁用处理。
 
-The two layers are complementary and neither replaces the other: the GUI ban stops a player from
-*reaching* multiplayer, and the gate covers the case where someone starts a modded server
-anyway. Note also the deliberate asymmetry — the GUI ban **fails open** (a broken menu is worse
-than an un-banned button, and the gate still holds), while the gate **fails closed**.
+The two mechanisms cover different cases and neither replaces the other: the entrance ban stops a
+player from reaching the multiplayer UI; the gate handles the case where the mod has already been
+installed on a server. Their failure directions also differ: the entrance ban fails open (a
+broken UI is more disruptive than an un-banned button), while the gate fails closed.
 
 ---
 
 ## 安装 / Installation
 
-1. 装好 Minecraft 1.20.1 对应的 Forge 47.x
-2. 把这个 jar 丢进 `mods` 文件夹
-3. 就这样 —— 没有任何必需的前置
+1. 为 Minecraft 1.20.1 安装 Forge 47.x
+2. 将 jar 放入 `mods` 目录
 
-1. Install Minecraft Forge 47.x for Minecraft 1.20.1
-2. Drop the jar into your `mods` folder
-3. That is all — there are no required dependencies
+无需其他前置。模组为客户端完整，仅安装在客户端即可使用全部单人功能。
 
-模组在客户端是完整的：只装在客户端就能玩单人。
+1. Install Forge 47.x for Minecraft 1.20.1
+2. Place the jar in your `mods` directory
 
-The mod is client-side complete: single-player works with it installed on the client alone.
-
----
-
-## 配置 / Configuration
-
-配置文件：`config/undying-common.toml`。大部分开关在游戏内也能通过聊天触发词或 `/antigrief` 操作。
-
-Config file: `config/undying-common.toml`. Most switches are also reachable in-game through chat
-triggers or `/antigrief`.
-
-**总开关默认是关的。** 关着的时候这个模组什么都不做 —— 如果你忘了自己关过，自检会告诉你这件事。
-
-The master switch ships **off**. With it off, the mod does nothing at all — which is what the
-self-check will tell you if you forget you turned it off.
+No other dependencies. The mod is client-side complete: installing it on the client alone
+provides the full range of single-player functionality.
 
 ---
 
-## 聊天触发词 / Chat triggers
+## 构建 / Building
 
-| 触发词 / Trigger | 效果 / Effect |
-|---|---|
-| `toggle` / `无敌` | 总开关 / Master switch |
-| `aura` / `光环` | 限时光环 / Timed aura |
-| `aura on` / `光环常驻` | 常驻光环 / Permanent aura |
-| `aura off` / `光环关闭` | 关闭光环 / Aura off |
-| `sword` / `取剑` | 获取虚空剑 / Obtain the Void Sword |
-| `creative` / `创造` | 创造模式物品菜单 / Creative item menu |
-
-触发词是中英双语的；两种都可用。
-
-Triggers are bilingual by request; English and Chinese both work.
-
----
-
-## 从源码构建 / Building from source
-
-需要 JDK 17。
-
-Requires JDK 17.
+需要 JDK 17。 / Requires JDK 17.
 
 ```bash
-./gradlew build
+./gradlew build     # 产物在 build/libs/ / output in build/libs/
+./gradlew test      # 单元测试 / unit tests
 ```
 
-jar 会生成在 `build/libs/`。跑单元测试：
+单元测试仅覆盖纯逻辑：环境门禁、联机入口拦截、审计比对。测试不将 Forge 工具链放入 classpath，因此无需预先搭建游戏环境。
 
-The jar lands in `build/libs/`. Run the unit tests with:
-
-```bash
-./gradlew test
-```
-
-测试**只覆盖纯逻辑** —— 环境门禁、联机 GUI 拦截、审计比对 —— 特意不把 Forge 工具链放进 classpath，所以 `gradle test` 很快，也不需要先把游戏环境搭起来。
-
-Tests cover pure logic only — the environment gate, the multiplayer GUI ban, and audit
-comparison — deliberately without the Forge toolchain on the classpath, so `gradle test` stays
-fast and runs without provisioning the game.
+Unit tests cover pure logic only: the environment gate, the multiplayer entrance ban, and audit
+comparison. The Forge toolchain is deliberately excluded from the test classpath, so tests run
+without provisioning the game.
 
 ---
 
-## 关于这份源码 / A note on the source
+## 实现约定 / Implementation notes
 
-### 它是怎么写出来的 / How this was written
+### Mixin 目标名称 / Mixin target names
 
-**这里大部分代码是 AI 写的，而设计由一位不读 Java 的人主导。** 这件事我们直接讲明白，因为它关系到任何人判断「要不要信任这个模组、要不要在它之上继续开发」。
+所有 mixin 的注入目标使用 SRG 名（如 `m_142416_`、`f_120018_`）并指定 `remap = false`。本模组不包含 refmap。在注入目标中使用开发环境名称会编译通过，但在运行时静默不生效。
 
-Most of the code here was written by an AI, and the design was directed by one person who does
-not read Java. That is stated plainly because it is relevant to anyone deciding whether to trust
-this mod or to build on it.
+All mixin injection targets use SRG names (for example `m_142416_`, `f_120018_`) with
+`remap = false`. The mod ships no refmap. Using a development-environment name in an injection
+target compiles successfully but silently fails to apply at runtime.
 
-这种分工实际产出了什么：
+### 注入位置 / Injection point
 
-What that division of labour produced, in practice:
+注入点应选在最外层方法。若调用者在调用返回后仍会修改该对象，则被调用方法内部的任何注入点都不会生效。
 
-- **每一个设计决定都是人拍的板。** 这个模组该做什么、必须拒绝做什么、哪些取舍可以接受 —— 这些一件都没有外包出去
-- **AI 负责实现，并且犯过错。** 其中好几个错误就写在修好它的那段代码旁边。光是一个联机拦截就试了三次，每次失败的**原因**都写在要紧的地方
-- **没有任何东西是凭「能编译」就被接受的。** 构建通过和功能真的能用，在这件事上不止一次是两回事
+Injection points are chosen at the outermost method. If a caller continues to modify the object
+after the call returns, no injection point inside the callee takes effect.
 
-- **Every design decision was a human call.** What the mod should do, what it must refuse to do,
-  which trade-offs were acceptable — none of that was delegated.
-- **The AI wrote the implementation, and got things wrong.** Several of those mistakes are
-  documented in the comments next to the code that fixed them. The multiplayer ban alone took
-  three attempts, and the reason each earlier attempt failed is written where it matters.
-- **Nothing was accepted on the strength of "it compiles".** The build passing and the feature
-  working turned out to be different things more than once.
+### 注释 / Comments
 
-如果你因此对这个项目观感变差，那是完全合理的反应。但另一个选择 —— 不说 —— 只会更糟：你会读着一份代码，却不知道它是怎么来的。
+源码注释记录设计原因与已修复缺陷的成因，不描述代码功能。多个已发布缺陷的成因写在修复它们的代码旁。
 
-If you find that off-putting, that is a fair reaction. The alternative — leaving it unsaid — would
-be worse, because you would be reading code without knowing how it came to be.
-
-### 怎么读这份代码 / Reading the code
-
-这个代码库的注释量，相对它的体量来说大得不寻常。这是故意的：注释记录的是**为什么**，不是**是什么**，而且其中好几条记录的是**已经发布出去、后来才被发现的 bug**。哪里看起来古怪，原因通常就写在旁边 —— 包括那些错误。
-
-This codebase carries unusually heavy comments for its size. That is intentional: the comments
-record *why*, not *what*, and several of them document bugs that were shipped and then found.
-Where a decision looks strange, the reason is usually written next to it — including the
-mistakes.
-
-读 mixin 之前，有两条约定值得先知道：
-
-Two conventions worth knowing before reading the mixins:
-
-- **注入目标一律用 SRG 名**（`m_142416_`、`f_120018_`）配 `remap = false`，因为本模组不带 refmap。在注入目标里写开发名，会**编译通过，然后在运行时静默不生效**
-- **在「最外层」注入。** 如果调用者在调用返回之后还会继续改那个对象，那么被调用方法**内部的任何注入点都赢不了**。这条在源码里有完整记录，因为它是试了三次才弄对的
-
-- **Targets are addressed by SRG name** (`m_142416_`, `f_120018_`) with `remap = false`, because
-  the mod ships no refmap. A development name in an injection target would compile and then
-  silently not apply at runtime.
-- **Inject at the outermost frame.** If a caller keeps modifying an object after the call
-  returns, no injection point inside the callee can win. This is documented in full in the
-  source, because it cost three attempts to get right.
-
----
-
-## 许可证 / Licence
-
-MIT。见 [LICENSE](LICENSE)。
-
-MIT. See [LICENSE](LICENSE).
-
-你可以自由使用、修改、再分发，包括商业用途和闭源项目。仅有的条件是：保留版权声明，以及不要找作者追责。
-
-You may use, modify, and redistribute this freely, including commercially and in closed-source
-projects. The only conditions are that the copyright notice stays, and that the authors are not
-held liable.
+Source comments record design rationale and the causes of fixed defects; they do not describe what
+the code does. The causes of several shipped defects are written next to the code that fixed them.
 
 ---
 
@@ -385,15 +404,27 @@ ShadowGraff, DeepSeek
 
 ---
 
-## 关于这份 README / About this README
+## 开发说明 / Development note
 
-**这份 README 也是 AI 生成的** —— 由 DeepSeek 根据实际代码和实际发生过的测试结果写成，再由项目作者审阅。
+本 README 由 AI 生成。模组本身同样如此：**全部实现代码由 AI 编写**，而**灵感、大部分设计，以及全部 BUG 测试均来自人类开发者**。
 
-**This README was also generated by an AI** — written by DeepSeek from the actual source code and
-the actual test results, then reviewed by the project's author.
+This README was generated by an AI. So was the mod itself: **every line of implementation code
+was written by an AI**, while **the idea, most of the design, and all bug testing came from human
+developers**.
 
-里面每一句关于行为、数值和坑的描述，都是照着代码和日志写的，不是回忆录。如果发现哪一句和代码不符，**以代码为准**。
+具体分工：
 
-Every claim here about behaviour, numbers and pitfalls was written against the code and the
-logs, not from memory. If you find a sentence that does not match the source, **the source is
-right**.
+The division of labour:
+
+| 环节 / Stage | 负责方 / Owner |
+|---|---|
+| 灵感与目标 / Idea and goals | 人类 / Human |
+| 大部分设计 / Most of the design | 人类 / Human |
+| 实现代码 / Implementation code | AI |
+| BUG 测试 / Bug testing | 人类 / Human |
+| 日志分析与修复 / Log analysis and fixes | AI |
+
+文中关于行为、数值与实现细节的描述均以源代码为依据。如有不符，以源代码为准。
+
+Statements here about behaviour, values and implementation details are based on the source code.
+Where they disagree, the source code is authoritative.
