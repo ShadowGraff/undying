@@ -235,8 +235,3 @@ publishing {
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
 }
-
-
-// Include the manually-maintained refmap in the JAR's root.
-// Forge's MixinService uses this to resolve source (Mojang) method names
-// to the SRG names present in the compiled Minecraft bytecode.

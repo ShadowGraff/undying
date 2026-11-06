@@ -86,8 +86,38 @@ public final class SnapshotStore {
         if (f == null) return false;
         File dir = f.getParentFile();
         if (dir != null && !dir.exists() && !dir.mkdirs()) return false;
-        NbtIo.writeCompressed(tag, f);
+
+        // Write-then-rename, never write in place.
+        // A crash inside writeCompressed used to truncate the ONLY copy on disk, and
+        // restore() then had nothing valid left to read: the file that was supposed to
+        // survive a broken game was the least robust file in the mod. The previous good
+        // snapshot is kept as .bak and read() falls back to it.
+        // Still plain compressed NBT in all three files (D-016: players must be able to
+        // open them with off-the-shelf NBT tools and roll back by hand).
+        File tmp = new File(f.getPath() + ".tmp");
+        File bak = new File(f.getPath() + ".bak");
+        NbtIo.writeCompressed(tag, tmp);
+
+        if (f.isFile()) {
+            move(f, bak);   // the previous snapshot becomes the fallback copy
+        }
+        move(tmp, f);
         return true;
+    }
+
+    /** Rename within the snapshot directory, atomically where the filesystem allows it. */
+    private static void move(File from, File to) throws IOException {
+        try {
+            java.nio.file.Files.move(from.toPath(), to.toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                    java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+        } catch (java.nio.file.AtomicMoveNotSupportedException e) {
+            // Same-volume renames on NTFS are atomic. Where a filesystem refuses, losing
+            // atomicity is not a reason to fail the whole snapshot — but it stays logged.
+            ModLog.swallowed("SnapshotStore.move.atomic", e);
+            java.nio.file.Files.move(from.toPath(), to.toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        }
     }
 
     /**
@@ -97,10 +127,42 @@ public final class SnapshotStore {
      */
     public static CompoundTag read(ServerPlayer p) throws IOException {
         File f = fileFor(p, true);
-        if (f == null || !f.exists()) return null;
-        // In 1.20.1 NbtIo.readCompressed only has the single-argument (File) overload;
-        // the overload taking an NbtAccounter was added in 1.20.2+, so do not copy the
-        // newer version's style here.
-        return NbtIo.readCompressed(f);
+        if (f == null) return null;
+
+        if (f.isFile()) {
+            try {
+                // In 1.20.1 NbtIo.readCompressed only has the single-argument (File)
+                // overload; the NbtAccounter overload arrived in 1.20.2+, so do not copy
+                // the newer version's style here.
+                return NbtIo.readCompressed(f);
+            } catch (Throwable t) {
+                // A truncated primary means the game died mid-write. Falling back to the
+                // previous snapshot loses at most one interval; giving up loses the player.
+                ModLog.swallowed("SnapshotStore.read.primary", t);
+                IntegrityGuard.LOGGER.warn(
+                        "[snapshot] primary snapshot is unreadable; falling back to .bak");
+            }
+        }
+
+        File bak = new File(f.getPath() + ".bak");
+        if (bak.isFile()) {
+            return NbtIo.readCompressed(bak);
+        }
+        return null;
+    }
+
+    /**
+     * Read the previous snapshot ({@code .bak}) directly.
+     *
+     * <p>{@link #read} uses it only when the primary cannot be parsed. The caller also needs
+     * it when the primary parses fine but is not a valid snapshot — a file that was replaced
+     * rather than truncated — and that judgement belongs to the policy layer, not here.
+     */
+    public static CompoundTag readPrevious(ServerPlayer p) throws IOException {
+        File f = fileFor(p, true);
+        if (f == null) return null;
+        File bak = new File(f.getPath() + ".bak");
+        if (!bak.isFile()) return null;
+        return NbtIo.readCompressed(bak);
     }
 }

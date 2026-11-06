@@ -2,6 +2,9 @@ package com.undying.core;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 
 import java.util.UUID;
 
@@ -61,16 +64,21 @@ public final class SaveSnapshot {
     public static void capture(ServerPlayer p) {
         if (!enabled()) return;
         try {
-            CompoundTag tag = SnapshotCodec.encode(p);
+            PlayerState state = PlayerState.of(p);
+
+            // The fingerprint is checked BEFORE encoding, never after.
+            // It used to run after SnapshotCodec.encode(), so the whole inventory was still
+            // serialized to NBT every 5 seconds and then discarded whenever nothing had
+            // changed — the exact waste the fingerprint was introduced to avoid. Only the
+            // disk write was being saved; the CPU cost was paid in full either way.
+            int hash = fingerprint(p);
+            if (state.snapshotHash != null && state.snapshotHash == hash) return;
 
             // ⚠️ A lightweight fingerprint, not tag.toString().hashCode().
             //    The latter means serializing the whole inventory into a string every
             //    5 seconds just to compute a hash — a classic case of "burning CPU to
             //    save IO", slower the bigger the inventory, and it runs on the main thread.
-            PlayerState state = PlayerState.of(p);
-            int hash = fingerprint(p);
-            if (state.snapshotHash != null && state.snapshotHash == hash) return;
-
+            CompoundTag tag = SnapshotCodec.encode(p);
             if (SnapshotStore.save(p, tag)) {
                 state.snapshotHash = hash;
             }
@@ -97,6 +105,38 @@ public final class SaveSnapshot {
         h = 31 * h + p.totalExperience;
         h = 31 * h + p.getFoodData().getFoodLevel();
         h = 31 * h + p.getActiveEffects().size();
+        h = 31 * h + inventoryFingerprint(p);
+        return h;
+    }
+
+    /**
+     * The inventory's contribution to the fingerprint.
+     *
+     * <p>Without it, the fingerprint ignored exactly the data a rollback exists to protect.
+     * Standing still at a chest — the normal way to sort loot — changes no scalar field, so
+     * no snapshot was written while the inventory was in fact changing. A later restore then
+     * resurrected the *old* inventory: at best badly out of date, at worst duplicated against
+     * whatever had just been put into the chest.
+     *
+     * <p>One pass over 41 slots every 100 ticks: item id, count, damage, and the NBT hash of
+     * stacks that carry NBT. Nothing is serialized and no NBT is built, so the original
+     * reason for the fingerprint (never stringify the inventory on the main thread) still
+     * holds.
+     */
+    private static int inventoryFingerprint(ServerPlayer p) {
+        Inventory inv = p.getInventory();
+        int h = 1;
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack s = inv.getItem(i);
+            if (s.isEmpty()) {
+                h = 31 * h;
+                continue;
+            }
+            h = 31 * h + Item.getId(s.getItem());
+            h = 31 * h + s.getCount();
+            h = 31 * h + s.getDamageValue();
+            h = 31 * h + (s.hasTag() ? s.getTag().hashCode() : 0);
+        }
         return h;
     }
 
@@ -139,8 +179,13 @@ public final class SaveSnapshot {
         float hpBefore = p.getHealth();
         Object reasonBefore = p.getRemovalReason();
 
-        if (restore(p)) {
-            state.lastRestoreTick = now;
+        boolean restored = restore(p);
+        // Back off after failures too, not only after successes. A permanently unreadable
+        // snapshot would otherwise be re-read from disk every single tick, one warn line each
+        // time — the exact hammering this cooldown exists to prevent.
+        state.lastRestoreTick = now;
+
+        if (restored) {
             int n = ++state.restoreCount;
 
             // ⚠️ Record which condition actually held.
@@ -174,12 +219,32 @@ public final class SaveSnapshot {
     public static boolean restore(ServerPlayer p) {
         try {
             CompoundTag tag = SnapshotStore.read(p);
+            if (!SnapshotCodec.isValid(tag)) {
+                // Parses, but is not a snapshot of ours: replaced rather than truncated.
+                // read() only falls back on a parse failure, so try the previous copy here.
+                tag = SnapshotStore.readPrevious(p);
+            }
             if (!SnapshotCodec.isValid(tag)) return false;
 
-            SnapshotCodec.apply(p, tag);
+            // Restoring is a privileged write: our own anti-tamper gate would otherwise
+            // reject the harmful effects recorded in the snapshot and hand back an
+            // incomplete player. try/finally, because an exemption that leaks is worse
+            // than no exemption.
+            PlayerState state = PlayerState.of(p);
+            state.restoringSnapshot = true;
+            try {
+                SnapshotCodec.apply(p, tag);
+            } finally {
+                state.restoringSnapshot = false;
+            }
 
-            saveNow();
             IntegrityGuard.LOGGER.info("[snapshot] restored {} from snapshot", p.getName().getString());
+            // Invalidate the fingerprint cache: after a restore it no longer describes what
+            // is on disk. The restored state usually hashes to the very value that was cached
+            // (it IS the last snapshot), so without this the next capture() would skip the
+            // write and a corrupt primary would never heal itself — worse, if we fell back to
+            // .bak, the cache would be describing the newer primary we did not use.
+            state.snapshotHash = null;
             return true;
         } catch (Throwable t) {
             IntegrityGuard.LOGGER.warn("[snapshot] restore failed: {}", t.toString());
@@ -204,19 +269,9 @@ public final class SaveSnapshot {
         return v <= 0 ? DEFAULT_INTERVAL : v;
     }
 
-    /**
-     * Throttling for persisting the config.
-     *
-     * <p>⚠️ The original implementation called ConfigTracker.save() on every restore, which
-     * in a "restore over and over" scenario means writing a TOML file every time — extra
-     * main-thread IO. Changed to at most once per second.
-     */
-    private static long LAST_SAVE_MS = 0L;
-
-    private static void saveNow() {
-        long now = System.currentTimeMillis();
-        if (now - LAST_SAVE_MS < 1000L) return;
-        LAST_SAVE_MS = now;
-        ModConfig.save();
-    }
+    // Restoring a snapshot deliberately does NOT save the mod config any more. The two have
+    // nothing to do with each other: the old call wrote a TOML file on every restore, and
+    // throttling it to once a second only made a pointless side effect less frequent.
+    // ModConfig.save() still exists for its real callers (ImmortalMode, IntegrityGuard,
+    // SelfGuard), which persist an actual config change.
 }

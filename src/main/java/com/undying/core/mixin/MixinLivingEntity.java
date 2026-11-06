@@ -8,6 +8,7 @@ import com.undying.core.UndyingMod;
 import com.undying.core.Notify;
 import com.undying.core.Thorns;
 import com.undying.core.TotemFx;
+import com.undying.core.TotemRestore;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.damagesource.DamageSource;
@@ -22,8 +23,6 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.util.Map;
-
 @Mixin(LivingEntity.class)
 public abstract class MixinLivingEntity {
 
@@ -32,16 +31,18 @@ public abstract class MixinLivingEntity {
     private static final int HIDDEN_ARMOR_BONUS = 20;
 
     /*
-     * Tracks temporary totems injected so vanilla can fire LivingUseTotemEvent normally.
+     * Temporary totems let vanilla fire LivingUseTotemEvent normally. The offhand items they
+     * displace are parked in TotemRestore rather than in a field here, because the tick task
+     * needs the same table for its leak sweep.
      *
-     * ⚠️ 2026-09-19 fix: this used to be a WeakHashMap. It would not actually fail in
-     * practice (injection and restore happen within the same method call, so no GC can
-     * occur in between), but the semantics were wrong — once a key is collected, the
-     * restore phase loses the original offhand item. Switched to a plain HashMap, and
-     * undying$restoreOffhand is guaranteed to remove the entry (see below).
+     * ⚠️ The comment that used to live here claimed undying$restoreOffhand was "guaranteed"
+     *    to remove the entry. It is not: if checkTotemDeathProtection throws, or another mod
+     *    cancels it at HEAD, RETURN is never reached, and the player kept a totem instead of
+     *    their real offhand item. Hence the sweep.
+     *
+     * ⚠️ 2026-09-19 fix: not a WeakHashMap either — a collected key would have lost the
+     *    original offhand item before the restore phase could read it.
      */
-    @Unique
-    private static final Map<LivingEntity, ItemStack> TOTEM_RESTORE = new java.util.HashMap<>();
 
     // Step 1: ensure a totem exists so vanilla checkTotemDeathProtection fires all events/sounds
     // Hidden second offhand: if HiddenSlots holds a totem (immortal mode initializes it on join)
@@ -70,7 +71,7 @@ public abstract class MixinLivingEntity {
         if (TotemFx.inCooldown(p, true)) return;
 
         // Inject a temporary totem into offhand; vanilla will consume it + fire event
-        TOTEM_RESTORE.put(self, self.getOffhandItem().copy());
+        TotemRestore.stash(self, self.getOffhandItem().copy());
         self.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.TOTEM_OF_UNDYING));
     }
 
@@ -78,7 +79,7 @@ public abstract class MixinLivingEntity {
     @Inject(method = "m_21262_", at = @At("RETURN"), remap = false)
     private void undying$restoreOffhand(DamageSource src, CallbackInfoReturnable<Boolean> cir) {
         LivingEntity self = (LivingEntity) (Object) this;
-        ItemStack original = TOTEM_RESTORE.remove(self);
+        ItemStack original = TotemRestore.take(self);
         if (original != null) {
             self.setItemInHand(InteractionHand.OFF_HAND, original);
             cir.setReturnValue(true);

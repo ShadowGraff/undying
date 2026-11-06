@@ -86,7 +86,7 @@ current implementation:
 | 死亡锁拦截点 / Death-lock interception points | 11 |
 | 环境门禁调用点 / Environment gate call sites | 19（分布 13 个文件 / across 13 files） |
 | 自检探针 / Self-check probes | 10 |
-| 主要类 / Main classes | 48 |
+| 主要类 / Main classes | 49 |
 
 **一个死亡要真正发生，需要上述拦截点同时失效。** 每个点都在代码里独立实现，不共享同一个开关。
 
@@ -121,35 +121,38 @@ Here is where the interception points sit — this is why it is hard to route ar
 
 | # | 拦截点 / Interception point | 目标方法 / Target | 类型 / Kind |
 |---|---|---|---|
-| 1 | 伤害入口 / Damage entry | `LivingEntity.hurt` | `@Inject` HEAD，可取消 |
-| 2 | 血量下限 / Damage floor | `LivingEntity.hurt` | `@Inject` HEAD，按血量判定 |
-| 3 | 守护神盾 / Ward shield | `LivingEntity.hurt` | `@Inject` HEAD，全伤害免疫 |
-| 4 | 血量写入闸门 / Health write gate | `SynchedEntityData.set` | `@ModifyVariable` |
-| 5 | 血量写入闸门（第二入口）/ Second write gate | `SynchedEntityData.set` | `@ModifyVariable` |
+| 1 | 血量下限（拒绝致死伤害）/ Lethal damage refusal | `LivingEntity.hurt` | `@Inject` HEAD，可取消 |
+| 2 | 守护神盾 / Ward shield | `LivingEntity.hurt` | `@Inject` HEAD，全伤害免疫，可取消 |
+| 3 | 血量写入下限 / Health floor on write | `LivingEntity.setHealth` | `@ModifyVariable` |
+| 4 | 血量同步写入闸门 / Synched health write gate | `SynchedEntityData.set` | `@ModifyVariable` |
+| 5 | 血量同步写入闸门（内部写入口）/ Internal write gate | `SynchedEntityData.set` | `@ModifyVariable` |
 | 6 | 死亡流程 / Death pipeline | `LivingEntity.die` | `@Inject` HEAD，可取消 |
-| 7 | `kill()` 拦截 / `kill()` interception | `LivingEntity.kill` | `@Inject` HEAD，可取消 |
+| 7 | `kill()` 拦截 / `kill()` interception | `Entity.kill` | `@Inject` HEAD，可取消 |
 | 8 | 移除拦截 / Removal interception | `Entity.remove` | `@Inject` HEAD，可取消 |
-| 9 | 实体失效 / Entity invalidation | `Entity.isRemoved` | `@Inject` HEAD，可取消 |
+| 9 | 隐藏盔甲 / Hidden armour | `LivingEntity.getArmorValue` | `@Inject` RETURN，可取消 |
 | 10 | 图腾补挂 / Totem injection | `LivingEntity.checkTotemDeathProtection` | `@Inject` HEAD |
 | 11 | 图腾归还 / Totem restore | `LivingEntity.checkTotemDeathProtection` | `@Inject` RETURN |
 
 | # | 拦截点 / Interception point | 目标方法 / Target | 类型 / Kind |
 |---|---|---|---|
-| 1 | Damage entry | `LivingEntity.hurt` | `@Inject` HEAD, cancellable |
-| 2 | Damage floor | `LivingEntity.hurt` | `@Inject` HEAD, health-checked |
-| 3 | Ward shield | `LivingEntity.hurt` | `@Inject` HEAD, full immunity |
-| 4 | Health write gate | `SynchedEntityData.set` | `@ModifyVariable` |
-| 5 | Second write gate | `SynchedEntityData.set` | `@ModifyVariable` |
+| 1 | Lethal damage refusal | `LivingEntity.hurt` | `@Inject` HEAD, cancellable |
+| 2 | Ward shield | `LivingEntity.hurt` | `@Inject` HEAD, full immunity, cancellable |
+| 3 | Health floor on write | `LivingEntity.setHealth` | `@ModifyVariable` |
+| 4 | Synched health write gate | `SynchedEntityData.set` | `@ModifyVariable` |
+| 5 | Internal synched write gate | `SynchedEntityData.set` | `@ModifyVariable` |
 | 6 | Death pipeline | `LivingEntity.die` | `@Inject` HEAD, cancellable |
-| 7 | `kill()` interception | `LivingEntity.kill` | `@Inject` HEAD, cancellable |
+| 7 | `kill()` interception | `Entity.kill` | `@Inject` HEAD, cancellable |
 | 8 | Removal interception | `Entity.remove` | `@Inject` HEAD, cancellable |
-| 9 | Entity invalidation | `Entity.isRemoved` | `@Inject` HEAD, cancellable |
+| 9 | Hidden armour | `LivingEntity.getArmorValue` | `@Inject` RETURN, cancellable |
 | 10 | Totem injection | `LivingEntity.checkTotemDeathProtection` | `@Inject` HEAD |
 | 11 | Totem restore | `LivingEntity.checkTotemDeathProtection` | `@Inject` RETURN |
 
-**11 个注入点，其中 8 个可取消原版流程。** 要真正杀死玩家，这些点必须**同时**失效 —— 这就是「四层机制」背后的实际规模。
+**11 个注入点，其中 6 个可取消原版流程（第 1、2、6、7、8、9 行）。** 另有 3 处 `@ModifyVariable`（第 3、4、5 行）改写传入的血量值，属于改值而非取消，不计入。要真正杀死玩家，这些点必须**同时**失效 —— 这就是「四层机制」背后的实际规模。
 
-**11 injection points, 8 of which can cancel vanilla's flow.** For a death to succeed, all of them must fail *simultaneously* — that is the actual scale behind "four mechanisms".
+**11 injection points, 6 of which can cancel vanilla's flow (rows 1, 2, 6, 7, 8, 9).** The three
+`@ModifyVariable` points (rows 3, 4, 5) rewrite the incoming health value rather than cancelling
+the call, so they are not counted as cancellable. For a death to succeed, all of them must fail
+*simultaneously* — that is the actual scale behind "four mechanisms".
 
 下面是这些拦截点**各自负责什么**：
 
@@ -160,7 +163,7 @@ Below is **what each of them is responsible for**:
 | 1 | 拒绝伤害 / Damage refusal | 血量到达保底线时，该次伤害不被接受：不扣血、不触发事件、不产生击退<br>At the health floor the hit is not accepted: no damage, no event, no knockback |
 | 2 | 血量闸门 / Health clamp | 血量同步数据的两个写入口。任何把血量写到保底线以下的尝试都会被抬回<br>Both write paths to synched health data; any attempt to write below the floor is pushed back up |
 | 3 | `die()` 取消 / Cancellation | 取消死亡流程并回滚：清除死亡计时器、恢复血量、退还图腾效果<br>Cancels and rewinds the death pipeline: timer cleared, health restored, totem effect refunded |
-| 4 | 移除拦截 / Removal interception | 拦截 `remove(KILLED)`、`kill()` 与 `isRemoved()`<br>Intercepts `remove(KILLED)`, `kill()` and `isRemoved()` |
+| 4 | 移除拦截 / Removal interception | 拦截 `remove(KILLED)` 与 `kill()`；`DISCARDED` 一律放行<br>Intercepts `remove(KILLED)` and `kill()`; `DISCARDED` is always let through |
 
 **第 1 层采用「拒绝」而非「事后回血」。** 原版死亡动画（`tickDeath`）一旦启动，修改血量无法中止该流程，玩家会停留在服务端认为存活、但每 50 毫秒被尝试移除一次的状态。在伤害入口直接拒绝可以避免该状态。
 
@@ -323,8 +326,16 @@ them is not tampering.
 
 玩家状态定期写入世界目录下的 `_undying_backup/<uuid>.dat`。检测到死亡或状态异常时，从该文件回滚。
 
+写入采用「先写 `.tmp` 再原子改名」，不会原地覆盖；上一份快照保留为 `<uuid>.dat.bak`，主文件读不出来或内容无效时自动回退到它。回滚成功后下一次采集会强制重新落盘，让损坏的主文件自愈。`.dat` 与 `.bak` 均为标准压缩 NBT，可用现成 NBT 工具直接打开、手动回滚。
+
 Player state is periodically written to `_undying_backup/<uuid>.dat` inside the world directory.
 When death or state corruption is detected, state is rolled back from that file.
+
+Writes go to a `.tmp` file and are then renamed into place, never overwritten in situ; the previous
+snapshot is kept as `<uuid>.dat.bak`, and is used automatically when the primary cannot be parsed
+or is not a valid snapshot. After a restore the next capture always rewrites the primary, so a
+damaged file heals itself. Both `.dat` and `.bak` are standard compressed NBT and can be opened
+with off-the-shelf NBT tools for a manual rollback.
 
 **回滚的是玩家状态，不是存档。** 具体包括位置、血量、物品栏、经验等玩家自身数据。世界数据（区块、实体、方块）不在回滚范围内。
 
@@ -485,7 +496,7 @@ the code does. The causes of several shipped defects are written next to the cod
 
 ## 作者 / Authors
 
-ShadowGraff, DeepSeek
+ShadowGraff, DeepSeek, Kimi
 
 ---
 
@@ -507,6 +518,17 @@ individual and has no affiliation or partnership with the company.
 
 For the service's own terms, see the [DeepSeek Terms of Use](https://cdn.deepseek.com/policies/en-US/deepseek-terms-of-use.html).
 
+**Kimi 是月之暗面（Moonshot AI，公司注册名：月之暗面科技股份有限公司）开发的 AI 助手名称。**
+本项目在作者署名与开发说明中提及该名称，**仅用于说明本项目所获得的 AI 辅助的来源**。此提及**不代表月之暗面对本项目的任何赞助、认可、担保或官方关联**；本项目为个人独立作品，与月之暗面无任何隶属或合作关系。相关服务条款以月之暗面官方公布为准。
+
+**Kimi is the name of the AI assistant developed by Moonshot AI (registered company name:
+月之暗面科技股份有限公司).**
+The name is referenced in this project's authorship line and development note **solely to identify
+the source of the AI assistance used**. This reference **does not imply any sponsorship,
+endorsement, warranty, or official affiliation with Moonshot AI**; this project is an independent
+work by an individual and has no affiliation or partnership with the company. For the service's
+own terms, refer to Moonshot AI's official publications.
+
 ---
 
 ## 开发说明 / Development note
@@ -525,7 +547,7 @@ The division of labour:
 |---|---|
 | 灵感与目标 / Idea and goals | 人类 / Human |
 | 大部分设计 / Most of the design | 人类 / Human |
-| 实现代码 / Implementation code | AI（DeepSeek，见[商标声明](#商标声明--trademark-notice)）/ AI (DeepSeek — see the [trademark notice](#商标声明--trademark-notice)) |
+| 实现代码 / Implementation code | AI（DeepSeek、Kimi，见[商标声明](#商标声明--trademark-notice)）/ AI (DeepSeek and Kimi — see the [trademark notice](#商标声明--trademark-notice)) |
 | BUG 测试 / Bug testing | 人类 / Human |
 | 日志分析与修复 / Log analysis and fixes | AI |
 

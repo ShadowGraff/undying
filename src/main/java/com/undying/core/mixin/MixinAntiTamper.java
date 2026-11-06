@@ -34,6 +34,11 @@ public abstract class MixinAntiTamper {
         if (!((Object) this instanceof ServerPlayer p)) return;
         if (!com.undying.core.Environment.isAllowed(p)) return;   // single-player only
         if (effect == null) return;
+        // A snapshot restore replays whatever was recorded, harmful effects included.
+        // Without this exemption the gate rejected those effects and the restore came back
+        // silently incomplete: one module undoing another module's work.
+        com.undying.core.PlayerState st = com.undying.core.PlayerState.find(p.getUUID());
+        if (st != null && st.restoringSnapshot) return;
         MobEffect type = effect.getEffect();
         if (type != null && type.getCategory() == MobEffectCategory.HARMFUL) {
             cir.setReturnValue(false); // reject applying the harmful effect

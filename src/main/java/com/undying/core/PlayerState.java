@@ -143,6 +143,10 @@ public final class PlayerState {
     /** Tick of the last restore */
     public long lastRestoreTick;
 
+    /** A snapshot restore is currently writing state back, so our own interception
+     *  (anti-tamper on potion effects) must stand aside for the duration */
+    public boolean restoringSnapshot;
+
     // ══════════════ Mod scan ══════════════
 
     /** Whether the scan result has already been announced */

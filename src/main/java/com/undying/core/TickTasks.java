@@ -21,6 +21,10 @@ public final class TickTasks {
         // client connected to someone else's server, nothing below may run.
         if (Environment.isBlocked(p)) return;
 
+        // First: hand back any offhand item whose totem-restore hook never ran. A no-op
+        // unless that already went wrong, so it costs one map lookup on a normal tick.
+        TotemRestore.recoverLeaked(p);
+
         // ⚠️ The save snapshot restore check MUST come BEFORE isAlive().
         //    A dead or removed player has isAlive() == false, so placing this
         //    after that check means it never runs and the whole "rollback"
