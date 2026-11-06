@@ -71,6 +71,28 @@ This mod consists of two independent groups of features:
 **The master switch defaults to on** (`masterToggle = true`). Set it to `false` and the mod does
 not intervene in any game logic.
 
+### 规模一览 / At a glance
+
+防护不是靠一个开关生效，而是分布在多个独立环节上。当前实现的规模：
+
+Protection does not rest on a single switch; it is spread across many independent stages. The
+current implementation:
+
+| 项目 / Item | 数量 / Count |
+|---|---|
+| Mixin 类 / Mixin classes | 13 |
+| 注入点 / Injection points | 19 |
+| 其中可取消原版流程 / Of which cancellable | 13 |
+| 死亡锁拦截点 / Death-lock interception points | 11 |
+| 环境门禁调用点 / Environment gate call sites | 19（分布 13 个文件 / across 13 files） |
+| 自检探针 / Self-check probes | 10 |
+| 主要类 / Main classes | 48 |
+
+**一个死亡要真正发生，需要上述拦截点同时失效。** 每个点都在代码里独立实现，不共享同一个开关。
+
+**For a death to actually happen, all of those interception points must fail together.** Each is
+implemented independently in code and does not share a single switch.
+
 ---
 
 ## 无敌模式 / Immortal mode
@@ -89,16 +111,56 @@ On enable the chat reports `无敌模式：开启`; on disable, `无敌模式：
 
 ### 死亡锁 / Death lock
 
-四层独立机制。任意一层生效即可阻止死亡。
+死亡锁不是一个开关，而是**沿原版死亡流程分布的拦截点**。从「伤害进入」到「实体被移除」，原版有五个必经环节，本模组在每一环都留有独立的拦截。
 
-Four independent mechanisms. Any one of them holding prevents a death.
+The death lock is not a single switch but **a set of interception points distributed along vanilla's death pipeline**. From "damage enters" to "entity is removed" vanilla has five mandatory stages; this mod intercepts at every one of them.
+
+先看拦截点的位置 —— 这是它为什么难被绕过的原因：
+
+Here is where the interception points sit — this is why it is hard to route around:
+
+| # | 拦截点 / Interception point | 目标方法 / Target | 类型 / Kind |
+|---|---|---|---|
+| 1 | 伤害入口 / Damage entry | `LivingEntity.hurt` | `@Inject` HEAD，可取消 |
+| 2 | 血量下限 / Damage floor | `LivingEntity.hurt` | `@Inject` HEAD，按血量判定 |
+| 3 | 守护神盾 / Ward shield | `LivingEntity.hurt` | `@Inject` HEAD，全伤害免疫 |
+| 4 | 血量写入闸门 / Health write gate | `SynchedEntityData.set` | `@ModifyVariable` |
+| 5 | 血量写入闸门（第二入口）/ Second write gate | `SynchedEntityData.set` | `@ModifyVariable` |
+| 6 | 死亡流程 / Death pipeline | `LivingEntity.die` | `@Inject` HEAD，可取消 |
+| 7 | `kill()` 拦截 / `kill()` interception | `LivingEntity.kill` | `@Inject` HEAD，可取消 |
+| 8 | 移除拦截 / Removal interception | `Entity.remove` | `@Inject` HEAD，可取消 |
+| 9 | 实体失效 / Entity invalidation | `Entity.isRemoved` | `@Inject` HEAD，可取消 |
+| 10 | 图腾补挂 / Totem injection | `LivingEntity.checkTotemDeathProtection` | `@Inject` HEAD |
+| 11 | 图腾归还 / Totem restore | `LivingEntity.checkTotemDeathProtection` | `@Inject` RETURN |
+
+| # | 拦截点 / Interception point | 目标方法 / Target | 类型 / Kind |
+|---|---|---|---|
+| 1 | Damage entry | `LivingEntity.hurt` | `@Inject` HEAD, cancellable |
+| 2 | Damage floor | `LivingEntity.hurt` | `@Inject` HEAD, health-checked |
+| 3 | Ward shield | `LivingEntity.hurt` | `@Inject` HEAD, full immunity |
+| 4 | Health write gate | `SynchedEntityData.set` | `@ModifyVariable` |
+| 5 | Second write gate | `SynchedEntityData.set` | `@ModifyVariable` |
+| 6 | Death pipeline | `LivingEntity.die` | `@Inject` HEAD, cancellable |
+| 7 | `kill()` interception | `LivingEntity.kill` | `@Inject` HEAD, cancellable |
+| 8 | Removal interception | `Entity.remove` | `@Inject` HEAD, cancellable |
+| 9 | Entity invalidation | `Entity.isRemoved` | `@Inject` HEAD, cancellable |
+| 10 | Totem injection | `LivingEntity.checkTotemDeathProtection` | `@Inject` HEAD |
+| 11 | Totem restore | `LivingEntity.checkTotemDeathProtection` | `@Inject` RETURN |
+
+**11 个注入点，其中 8 个可取消原版流程。** 要真正杀死玩家，这些点必须**同时**失效 —— 这就是「四层机制」背后的实际规模。
+
+**11 injection points, 8 of which can cancel vanilla's flow.** For a death to succeed, all of them must fail *simultaneously* — that is the actual scale behind "four mechanisms".
+
+下面是这些拦截点**各自负责什么**：
+
+Below is **what each of them is responsible for**:
 
 | 层 / Layer | 机制 / Mechanism | 说明 / Notes |
 |---|---|---|
 | 1 | 拒绝伤害 / Damage refusal | 血量到达保底线时，该次伤害不被接受：不扣血、不触发事件、不产生击退<br>At the health floor the hit is not accepted: no damage, no event, no knockback |
-| 2 | 血量闸门 / Health clamp | 血量同步数据的唯一写入口。任何把血量写到保底线以下的尝试都会被抬回<br>The only write path to synched health data; any attempt to write below the floor is pushed back up |
+| 2 | 血量闸门 / Health clamp | 血量同步数据的两个写入口。任何把血量写到保底线以下的尝试都会被抬回<br>Both write paths to synched health data; any attempt to write below the floor is pushed back up |
 | 3 | `die()` 取消 / Cancellation | 取消死亡流程并回滚：清除死亡计时器、恢复血量、退还图腾效果<br>Cancels and rewinds the death pipeline: timer cleared, health restored, totem effect refunded |
-| 4 | 移除拦截 / Removal interception | 拦截 `remove(KILLED)` 与 `kill()`<br>Intercepts `remove(KILLED)` and `kill()` |
+| 4 | 移除拦截 / Removal interception | 拦截 `remove(KILLED)`、`kill()` 与 `isRemoved()`<br>Intercepts `remove(KILLED)`, `kill()` and `isRemoved()` |
 
 **第 1 层采用「拒绝」而非「事后回血」。** 原版死亡动画（`tickDeath`）一旦启动，修改血量无法中止该流程，玩家会停留在服务端认为存活、但每 50 毫秒被尝试移除一次的状态。在伤害入口直接拒绝可以避免该状态。
 
@@ -206,11 +268,34 @@ With `deathAura` enabled the aura runs automatically without a manual trigger.
 | 虚空救援 / Void rescue | 玩家低于 y=-100 时传送回安全点。优先床或重生锚，未设置则回世界出生点，维度跟随玩家<br>Below y=-100, teleports to a safe point: bed or respawn anchor first, else world spawn, following the player's dimension |
 | 出生保护 / Spawn protection | 进入世界或重生后短时间内完全免伤，时长由 `spawnProtectTicks` 控制，默认 120 tick<br>Brief full damage immunity after joining or respawning; duration set by `spawnProtectTicks`, default 120 ticks |
 | 常驻增益 / Permanent effects | 吸收、再生、抗性提升、抗火<br>Absorption, Regeneration, Resistance, Fire Resistance |
+| **`/kill` 拦截 / `kill()` command interception** | 拦截 `/kill` 指令对玩家生效的路径<br>Intercepts the path by which `/kill` acts on the player |
+| **有害药水拦截 / Harmful effect interception** | 拦截外部施加的有害状态效果（如瞬间伤害、凋零）<br>Intercepts externally applied harmful effects (e.g. instant damage, wither) |
+| **经验扣除拦截 / XP drain interception** | 拦截单次大额经验扣除<br>Intercepts a single large experience drain |
+| **掉落伤害减免 / Fall damage reduction** | 由隐藏装备的摔落保护结算，每级 12%，上限 80%<br>Resolved through the hidden gear's Feather Falling, 12% per level, capped at 80% |
+| **荆棘反伤 / Thorns reflection** | 由隐藏装备的荆棘结算，同原版公式<br>Resolved through the hidden gear's Thorns, same formula as vanilla |
+| **游戏模式锁定 / Game-mode lock** | 阻止游戏模式被外部改为创造/旁观<br>Prevents the game mode being changed externally to creative/spectator |
+| **OP 保持 / OP retention** | 单人世界中保持 OP 权限不被剥夺<br>Keeps OP status from being revoked in single-player |
+| **创造权限授予 / Creative permissions** | 单人世界自动获得 OP<br>Grants OP automatically in single-player |
+
+**这些拦截之所以需要，是因为「不死」不等于「不损失」。** 一个玩家可以不掉血但被清空经验、被塞满有害药水、被改成旁观模式 —— 本模组把这些路径一并封住。
+
+**These interceptions exist because "not dying" is not the same as "not losing".** A player can keep their health while having their XP wiped, being loaded with harmful effects, or being switched to spectator mode — this mod closes those paths as well.
 
 常驻增益不含夜视与饱和：这两项会改变画面亮度并遮挡饥饿条。
 
 Permanent effects exclude Night Vision and Saturation: both alter screen brightness and obscure
 the hunger bar.
+
+### 反篡改 / Anti-tamper
+
+| 拦截 / Interception | 说明 / Description |
+|---|---|
+| 有害状态效果 / Harmful effects | `MobEffectInstance` 施加有害效果时拦截<br>Intercepts when a harmful `MobEffectInstance` is applied |
+| 大额经验扣除 / Large XP drain | 单次扣除超过阈值的经验时拦截<br>Intercepts when a single drain exceeds the threshold |
+
+**只对 `ServerPlayer` 生效，且只在无敌模式开启时。** 其他实体、以及无敌模式关闭时，行为与原版一致。
+
+**Applies only to `ServerPlayer`, and only while immortal mode is on.** Other entities, and the periods when immortal mode is off, behave exactly as vanilla.
 
 ### 完整性守卫 / Integrity guard
 
