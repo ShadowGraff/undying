@@ -45,6 +45,7 @@ public class ModConfig {
     public static final ForgeConfigSpec.BooleanValue THREAT_SCAN_NAME;     // name-pattern matching, on by default
     public static final ForgeConfigSpec.BooleanValue THREAT_SCAN_JAR;      // jar heuristic scan, off by default (relatively slow)
     public static final ForgeConfigSpec.BooleanValue THREAT_SCAN_BEHAVIOR; // behaviour analysis, off by default
+    public static final ForgeConfigSpec.BooleanValue THREAT_SCAN_RESOURCE_OVERRIDE; // vanilla resource override scan, on by default
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLACKLISTED_MODS;
 
     static {
@@ -127,6 +128,11 @@ public class ModConfig {
                 "Behavioural heuristics (registry tampering, forced kills, etc).",
                 "Experimental - disabled by default.")
                 .define("behaviorAnalysis", false);
+        THREAT_SCAN_RESOURCE_OVERRIDE = b.comment(
+                "Detect mod jars that ship resources under assets/minecraft/, i.e. mods that",
+                "REPLACE vanilla sounds / gui textures / shaders rather than adding new ones.",
+                "Aggregated per mod by category. Read-only zip scan; no file is modified.")
+                .define("resourceOverrides", true);
         BLACKLISTED_MODS = b.comment(
                 "Mod ids considered hostile. Reported on world join.")
                 .defineList("blacklistedMods", Arrays.asList(), o -> o instanceof String);

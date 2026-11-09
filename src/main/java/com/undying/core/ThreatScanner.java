@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.jar.JarFile;
 
 /**
@@ -25,6 +26,7 @@ import java.util.jar.JarFile;
  *   ② Name pattern   — modid / display name hits a suspicious keyword
  *   ③ jar features   — scans the jar file (size, class-name patterns); slower, off by default
  *   ④ Behavior analysis — runtime marking of suspicious behavior; experimental, off by default
+ *   ⑤ Resource override — jar ships assets/minecraft/..., i.e. it replaces vanilla content
  *
  * Scan timing: once after mod loading completes (the result is cached), announced when a
  * player enters the world. It is not announced at startup because no player is online then
@@ -83,6 +85,7 @@ public final class ThreatScanner {
                 if (ModConfig.THREAT_SCAN_BLACKLIST.get()) checkBlacklist(id, name);
                 if (ModConfig.THREAT_SCAN_NAME.get())      checkNamePattern(id, name);
                 if (ModConfig.THREAT_SCAN_JAR.get())       checkJar(id, name, info);
+                if (ModConfig.THREAT_SCAN_RESOURCE_OVERRIDE.get()) checkResourceOverride(id, name, info);
             }
             long cost = System.currentTimeMillis() - t0;
 
@@ -160,6 +163,85 @@ public final class ThreatScanner {
         } catch (Throwable t) {
             ModLog.swallowed("ThreatScanner.checkJar", t);
         }
+    }
+
+    /**
+     * ⑤ Vanilla resource override: the jar ships files under {@code assets/minecraft/}.
+     *
+     * <p>This is the dimension that catches resource-pack scares. A mod that wants to replace
+     * vanilla sounds or gui textures never touches a rendering or audio API — it ships the
+     * files and lets the mod resource pack outrank vanilla, so watching the render pipeline
+     * would never see it.
+     */
+    private static void checkResourceOverride(String id, String name,
+                                              net.minecraftforge.forgespi.language.IModInfo info) {
+        // Vanilla and Forge legitimately own that namespace. Reporting them would bury every
+        // real finding under thousands of vanilla entries.
+        if ("minecraft".equals(id) || "forge".equals(id) || UndyingMod.MODID.equals(id)) return;
+        try {
+            Path jar = info.getOwningFile().getFile().getFilePath();
+            if (jar == null || !Files.isRegularFile(jar)) return;
+
+            Set<String> declared = ResourceOverrides.readDeclaredPaths(jar);
+            if (declared.isEmpty()) return;
+
+            Set<String> vanilla = vanillaPaths();
+            if (vanilla == null) {
+                // Degraded, and said so out loud: without the vanilla list we know what the
+                // jar DECLARES, not what it actually replaces. Reporting a declaration as an
+                // override would accuse mods that merely add content.
+                add(new Finding(id, name, "resource-override",
+                        ResourceOverrides.summarizeUnverified(declared)));
+                return;
+            }
+            Set<String> actual = ResourceOverrides.actualOverrides(declared, vanilla);
+            if (actual.isEmpty()) return;
+            add(new Finding(id, name, "resource-override", ResourceOverrides.summarize(actual)));
+        } catch (Throwable t) {
+            ModLog.swallowed("ThreatScanner.checkResourceOverride", t);
+        }
+    }
+
+    /** Vanilla resource paths, resolved once per process; null = "could not be determined". */
+    private static Set<String> VANILLA_PATHS;
+    private static boolean vanillaTried = false;
+
+    /** Smallest plausible size of the real vanilla resource tree. Below this we did not find it. */
+    private static final int VANILLA_LIST_MIN_PLAUSIBLE = 1000;
+
+    /**
+     * Locate the vanilla jar through a class that exists on BOTH sides.
+     *
+     * <p>Naming {@code net.minecraft.client.Minecraft} here would make this class fail to link
+     * on a dedicated server; {@code net.minecraft.world.level.Level} is present in either
+     * distribution, so the lookup is safe wherever the scan runs.
+     */
+    private static Set<String> vanillaPaths() {
+        if (vanillaTried) return VANILLA_PATHS;
+        vanillaTried = true;
+        try {
+            var src = net.minecraft.world.level.Level.class.getProtectionDomain().getCodeSource();
+            if (src == null) return null;
+            Path jar = Path.of(src.getLocation().toURI());
+            // A classes directory (development runs) is not a resource jar: treat it as
+            // "unknown" rather than as an empty vanilla, which would silently hide everything.
+            if (!Files.isRegularFile(jar)) return null;
+
+            Set<String> found = ResourceOverrides.readDeclaredPaths(jar);
+            if (found.size() < VANILLA_LIST_MIN_PLAUSIBLE) {
+                // A wrong or partial jar would make every intersection empty, i.e. the whole
+                // dimension would report "nothing overridden" and look healthy. Fail loudly.
+                LOGGER.warn("[mod-scan] vanilla resource list looks wrong ({} entries from {}); "
+                        + "falling back to unverified declarations", found.size(), jar);
+                return null;
+            }
+            VANILLA_PATHS = found;
+            LOGGER.info("[mod-scan] vanilla resource list: {} entries", found.size());
+        } catch (Throwable t) {
+            ModLog.swallowed("ThreatScanner.vanillaPaths", t);
+            VANILLA_PATHS = null;
+        }
+        return VANILLA_PATHS;
     }
 
     // ═══════════ Results ═══════════
