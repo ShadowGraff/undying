@@ -53,6 +53,8 @@ Everything this mod does, at a glance. Each item is detailed in its own section 
 |---|---|
 | 配置界面 / Config screen | `O` 键打开，20 个开关；键位可在「控制 → 按键绑定」里改 / Opened with `O`, twenty switches; rebindable in Controls |
 | 领域白名单 / Domain allow-list | 按类别勾选 + 按实体搜索勾选 / Category toggles plus a searchable entity list |
+| 语言 / Language | 界面随游戏语言切换；聊天中英并排；配置注释双语 / GUI follows the game language; chat shows both; bilingual config comments |
+| 物品栏提示 / Inventory prompt | 左下角非阻塞面板，`Y×3` 回滚 / `N×3` 忽略 / Non-blocking corner panel, `Y×3` to roll back, `N×3` to ignore |
 
 **联机防护 / Multiplayer**
 
@@ -142,9 +144,10 @@ current implementation:
 | 注入点 / Injection points | 19 |
 | 其中可取消原版流程 / Of which cancellable | 13 |
 | 死亡锁拦截点 / Death-lock interception points | 11 |
-| 环境门禁调用点 / Environment gate call sites | 19（分布 13 个文件 / across 13 files） |
+| 环境门禁调用点 / Environment gate call sites | 20（分布 14 个文件 / across 14 files） |
 | 自检探针 / Self-check probes | 10 |
-| 主要类 / Main classes | 49 |
+| 主要类 / Main classes | 67（不含 13 个 mixin / excluding the 13 mixins） |
+| 单元测试 / Unit tests | 80（9 个测试类 / 9 test classes） |
 
 **一个死亡要真正发生，需要上述拦截点同时失效。** 每个点都在代码里独立实现，不共享同一个开关。
 
@@ -466,9 +469,9 @@ Matching displayed text fails on any non-English client.
 
 ### 2. 功能入口门禁 / Feature entry-point gate
 
-`Environment.isAllowed(...)` 在 19 处被调用，分布在 13 个文件中：聊天触发词、进入世界、每 tick 任务、指令、物品交互，以及所有可作用于 `ServerPlayer` 的 mixin 注入点。
+`Environment.isAllowed(...)` 在 20 处被调用，分布在 14 个文件中：聊天触发词、进入世界、每 tick 任务、指令、物品交互，以及所有可作用于 `ServerPlayer` 的 mixin 注入点。
 
-`Environment.isAllowed(...)` is consulted at 19 call sites across 13 files: chat triggers, world
+`Environment.isAllowed(...)` is consulted at 20 call sites across 14 files: chat triggers, world
 join, per-tick work, commands, item interaction, and every mixin injector that can affect a
 `ServerPlayer`.
 
@@ -550,11 +553,23 @@ provides the full range of single-player functionality.
 ./gradlew test      # 单元测试 / unit tests
 ```
 
-单元测试仅覆盖纯逻辑：环境门禁、联机入口拦截、审计比对。测试不将 Forge 工具链放入 classpath，因此无需预先搭建游戏环境。
+单元测试覆盖的是**能被测试的那一层**：环境门禁的两条判据、联机入口拦截、审计比对、领域的放行规则、物品栏变动的判定阈值与计数、Y/N 三次确认、开关级联、报告文件滚动、jar 内资源覆盖的解析与分类。测试不将 Forge 工具链放入 classpath，因此无需预先搭建游戏环境。
 
-Unit tests cover pure logic only: the environment gate, the multiplayer entrance ban, and audit
-comparison. The Forge toolchain is deliberately excluded from the test classpath, so tests run
-without provisioning the game.
+Unit tests cover the layer that *can* be tested: both environment-gate predicates, the multiplayer
+entrance ban, audit comparison, the domain allow-list rules, the inventory-change threshold and
+counting, the three-press confirmation, the switch rules, report-file rotation, and mod-jar
+resource parsing and classification. The Forge toolchain is deliberately excluded from the test
+classpath, so tests run without provisioning the game.
+
+**这层覆盖不到的东西要说清楚**：19 个注入点、图形界面、以及任何需要真实 Forge 运行时对象的
+代码（`IModFile`、`SecureJar`、mixin 类），单测通过都不构成它们能工作的证据。
+上一版有 10 个用例全绿、生产环境却 100% 失效，原因正是测试用的是真实文件系统上的真实文件。
+
+**What that does not cover**: the 19 injection points, the GUI, and anything that touches real
+Forge runtime objects (`IModFile`, `SecureJar`, mixin classes). A green test run is not evidence
+that those work. The previous release shipped ten passing tests on top of a feature that failed
+on every machine in production: the tests used real files on a real filesystem, which was the one
+case that worked.
 
 ---
 
