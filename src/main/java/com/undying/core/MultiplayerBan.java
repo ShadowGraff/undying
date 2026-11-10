@@ -86,9 +86,16 @@ public final class MultiplayerBan {
         return "unknown";
     }
 
-    /** Human-readable reason, shown to the player and written to the log */
+    /**
+     * Human-readable reason, shown to the player as a tooltip on the disabled button and
+     * written to the log.
+     *
+     * <p>Bilingual in one string rather than a translation key: this text reaches a tooltip
+     * built inside a mixin, where no client-only text API is available, and the log line uses
+     * the same string. The English half keeps it greppable.
+     */
     public static String reason() {
-        return "This mod is single-player only";
+        return "仅限单人游戏 / This mod is single-player only";
     }
 
     /**
