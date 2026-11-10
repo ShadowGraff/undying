@@ -59,8 +59,9 @@ public final class TotemRestore {
         ItemStack original = PENDING.remove(p);
         if (original == null) return;
         p.setItemInHand(InteractionHand.OFF_HAND, original);
-        // Loud on purpose (D-010): a silent repair would hide that the RETURN hook is being
-        // skipped at all, which is the thing worth knowing about.
+        // Loud on purpose: a silent repair would hide that the RETURN hook is being skipped
+        // at all, and that is the thing worth knowing about. Silent failure is the failure
+        // mode this project treats as unacceptable.
         IntegrityGuard.LOGGER.warn("[totem] offhand item recovered by the leak sweep: the "
                 + "RETURN hook in checkTotemDeathProtection did not run for {}",
                 p.getName().getString());

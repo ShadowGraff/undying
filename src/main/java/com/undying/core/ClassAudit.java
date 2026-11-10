@@ -24,10 +24,16 @@ import java.util.TreeMap;
  * otherwise every mod update would cry wolf, and <b>an alarm that cries wolf every day is
  * no alarm at all</b>.
  *
- * <p>Why we do not hook the class-loading phase (both approaches were tested and neither
- * worked), why we do not compare bytecode hashes, and the full story of the 2026-10-11
- * false positive along with the remaining limitations are recorded in docs/DECISIONS.md
- * (D-008).
+ * <p>What this cannot do, stated plainly:
+ * <ul>
+ *   <li>It compares class <i>structure</i>, not behaviour. A mod that keeps every method and
+ *       field intact while changing a body passes.</li>
+ *   <li>Hooking the class-loading phase was tried and does not work; comparing bytecode
+ *       hashes was tried and is too brittle across compilers and remapping.</li>
+ *   <li>On 2026-10-11 this check produced a false positive against our own jar, which is why
+ *       the baseline now records an environment fingerprint and is rebuilt quietly when it
+ *       changes instead of alerting.</li>
+ * </ul>
  */
 public final class ClassAudit {
 

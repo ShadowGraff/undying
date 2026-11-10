@@ -92,8 +92,8 @@ public final class SnapshotStore {
         // restore() then had nothing valid left to read: the file that was supposed to
         // survive a broken game was the least robust file in the mod. The previous good
         // snapshot is kept as .bak and read() falls back to it.
-        // Still plain compressed NBT in all three files (D-016: players must be able to
-        // open them with off-the-shelf NBT tools and roll back by hand).
+        // All three files stay plain compressed NBT on purpose: a player must be able to open
+        // them with off-the-shelf NBT tools and roll back by hand, without this mod running.
         File tmp = new File(f.getPath() + ".tmp");
         File bak = new File(f.getPath() + ".bak");
         NbtIo.writeCompressed(tag, tmp);

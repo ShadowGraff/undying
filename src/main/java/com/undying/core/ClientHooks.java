@@ -48,8 +48,9 @@ public class ClientHooks {
             // Cast to the plain interface, never to the mixin class: the mixin is merged
             // into IntegratedServer and does not exist as a class at runtime. Casting to it
             // raised NoClassDefFoundError("... is invalid") on every call, which silently
-            // degraded the structural LAN check to the heuristic D-008 already proved
-            // unreliable — i.e. an open-to-LAN world stayed fully protected.
+            // degraded the structural LAN check to the port/IP guess below, which had already
+            // been measured to miss published worlds — i.e. an open-to-LAN world stayed fully
+            // protected while the gate reported nothing wrong.
             return ((LanProbe) integrated).undying$isPublishedToLan();
         } catch (Throwable t) {
             // "This signal says nothing", not "not published" — Environment OR-s the signals,
