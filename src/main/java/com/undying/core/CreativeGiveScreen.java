@@ -36,7 +36,7 @@ public class CreativeGiveScreen extends Screen {
     private int gridTop;
 
     public CreativeGiveScreen() {
-        super(Component.literal("Creative Inventory"));
+        super(Component.translatable("undying.creative.title"));
     }
 
     @Override
@@ -48,7 +48,8 @@ public class CreativeGiveScreen extends Screen {
         }
         gridLeft = (width - COLS * SLOT) / 2;
         gridTop = 32;
-        search = new EditBox(this.font, gridLeft, 8, COLS * SLOT, 16, Component.literal("Search"));
+        search = new EditBox(this.font, gridLeft, 8, COLS * SLOT, 16,
+                Component.translatable("undying.creative.search"));
         search.setMaxLength(64);
         addRenderableWidget(search);
         applyFilter("");
@@ -126,7 +127,7 @@ public class CreativeGiveScreen extends Screen {
                         ForgeRegistries.ITEMS.getKey(s.getItem()).toString(), count));
                 // The client screen has no ServerPlayer, so reuse the same color scheme via Msg.render
                 this.minecraft.player.displayClientMessage(
-                        Msg.render("creative", "Obtained " + count + "x " + s.getHoverName().getString()), true);
+                        Msg.render("creative", "已获得 / Obtained " + count + "x " + s.getHoverName().getString()), true);
                 return true;
             }
         }

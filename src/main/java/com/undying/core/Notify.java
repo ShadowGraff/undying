@@ -38,7 +38,7 @@ public final class Notify {
     public static void killBlocked(ServerPlayer p) {
         try {
             if (allowed(p, "kill")) {
-                Msg.warn(p, UndyingMod.TAG).text("/kill was intercepted").send();
+                Msg.warn(p, UndyingMod.TAG).bi("/kill 已被拦截", "/kill was intercepted").send();
             }
         } catch (Throwable t) {
             ModLog.swallowed("Notify.killBlocked", t);
@@ -52,7 +52,8 @@ public final class Notify {
                     p.getName().getString(), how);
             if (allowed(p, "remove")) {
                 Msg.warn(p, UndyingMod.TAG)
-                        .text("Intercepted a forced removal (").text(how).text(")").send();
+                        .bi("拦截了一次强制移除（" + how + "）",
+                                "Intercepted a forced removal (" + how + ")").send();
             }
         } catch (Throwable t) {
             ModLog.swallowed("Notify.removalBlocked", t);

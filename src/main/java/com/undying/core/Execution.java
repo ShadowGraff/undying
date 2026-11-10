@@ -76,7 +76,8 @@ public final class Execution {
 
         // Target is already gone = success
         if (t == null || !t.isAlive() || t.isRemoved()) {
-            Msg.ok(p, "exec").text("layer ").num(s.layer + 1).text(": target cleared").send();
+            Msg.ok(p, "exec").bi("第 " + (s.layer + 1) + " 层：目标已清除",
+                    "layer " + (s.layer + 1) + ": target cleared").send();
             s.layer = Const.EXECUTION_LAYERS;
             return;
         }
@@ -84,14 +85,14 @@ public final class Execution {
         switch (s.layer) {
             case 0 -> {
                 // The actual damage is dealt by the void sword in onDamage (through the vanilla damage path)
-                Msg.info(p, "exec").text("layer 1: damage applied").send();
+                Msg.info(p, "exec").bi("第 1 层：伤害已施加", "layer 1: damage applied").send();
             }
             case 1 -> {
-                Msg.info(p, "exec").text("layer 2: forced removal").send();
+                Msg.info(p, "exec").bi("第 2 层：强制移除", "layer 2: forced removal").send();
                 ForceKill.kill(t);
             }
             case 2 -> {
-                Msg.warn(p, "exec").text("layer 3: data cleared").send();
+                Msg.warn(p, "exec").bi("第 3 层：数据已清除", "layer 3: data cleared").send();
                 ForceKill.clearPersistentData(t);
                 if (t instanceof LivingEntity le) {
                     new ArrayList<>(le.getActiveEffects())
@@ -106,7 +107,7 @@ public final class Execution {
                 }
             }
             case 3 -> {
-                Msg.warn(p, "exec").text("layer 4: peaceful difficulty").send();
+                Msg.warn(p, "exec").bi("第 4 层：和平难度", "layer 4: peaceful difficulty").send();
                 p.server.setDifficulty(net.minecraft.world.Difficulty.PEACEFUL, true);
             }
             default -> { }
@@ -114,7 +115,7 @@ public final class Execution {
 
         s.layer++;
         if (s.layer >= Const.EXECUTION_LAYERS) {
-            Msg.ok(p, "exec").text("execution chain complete").send();
+            Msg.ok(p, "exec").bi("处决链完成", "execution chain complete").send();
         }
     }
 

@@ -328,10 +328,14 @@ public final class ThreatScanner {
         java.util.StringJoiner names = new java.util.StringJoiner(", ");
         for (Finding f : FINDINGS) names.add(f.modId());
 
-        Msg.info(p, "mod-scan").text("detected ").num(FINDINGS.size())
-                .text(" mod(s) worth noting").link("[打开报告]", "/undying report").send();
+        Msg.info(p, "mod-scan")
+                .bi("发现 " + FINDINGS.size() + " 个值得注意的模组",
+                        "detected " + FINDINGS.size() + " mod(s) worth noting")
+                .link("[打开报告 / Report]", "/undying report").send();
         Msg.plain(p, null).text("  ").text(names.toString()).send();
-        Msg.plain(p, null).text("  (heuristic hints only; not proof of malicious intent)").send();
+        Msg.plain(p, null)
+                .bi("  （仅为启发式线索，不代表恶意）",
+                        "  (heuristic hints only; not proof of malicious intent)").send();
     }
 
 }

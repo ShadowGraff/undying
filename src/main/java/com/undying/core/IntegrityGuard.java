@@ -80,7 +80,8 @@ public class IntegrityGuard {
             String detail = ClassAudit.detailLine(audit);
             if (!detail.isEmpty()) {
                 LOGGER.warn("[structure-audit] structure anomalies found:{}", detail);
-                Msg.warn(p, "structure-audit").text("Key class structure anomaly detected; see log").send();
+                Msg.warn(p, "structure-audit").bi("检测到关键类结构异常，详见日志",
+                        "Key class structure anomaly detected; see log").send();
             }
         } catch (Throwable t) {
             LOGGER.warn("[structure-audit] failed (ignored): {}", t.toString());
@@ -163,7 +164,7 @@ public class IntegrityGuard {
             LOGGER.warn("[integrity-guard] tamper detected and repaired: {} (count {})", detail.toString().trim(), tamperCount);
             if (!state.alerted) {
                 state.alerted = true;
-                Msg.warn(p, "integrity-guard").text("External tampering detected and repaired: ")
+                Msg.warn(p, "integrity-guard").bi("检测到外部篡改并已修复：", "External tampering detected and repaired: ")
                         .dim(detail.toString().trim()).send();
             }
             // Refresh the snapshot after repairing

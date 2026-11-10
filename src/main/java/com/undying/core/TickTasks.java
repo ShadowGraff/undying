@@ -71,6 +71,6 @@ public final class TickTasks {
         if (p.server.getPlayerList().isOp(p.getGameProfile())) return;
 
         p.server.getPlayerList().op(p.getGameProfile());
-        Msg.ok(p, UndyingMod.TAG).text("OP was revoked; restored automatically").send();
+        Msg.ok(p, UndyingMod.TAG).bi("OP 被撤销，已自动恢复", "OP was revoked; restored automatically").send();
     }
 }

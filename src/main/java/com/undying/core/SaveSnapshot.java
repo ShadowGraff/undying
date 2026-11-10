@@ -196,7 +196,7 @@ public final class SaveSnapshot {
                     "[snapshot] reason: health={} lowHp={} isDeadOrDying={} isRemoved={} removalReason={}",
                     hpBefore, lowHp, dying, gone, reasonBefore);
 
-            Msg.fin(p, "snapshot").text("State was destroyed; restored from snapshot")
+            Msg.fin(p, "snapshot").bi("状态已被破坏，已从快照还原", "State was destroyed; restored from snapshot")
                     .dim("(" + n + "x)").send();
         }
     }

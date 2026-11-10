@@ -30,17 +30,17 @@ public final class VoidSword {
     public static void give(ServerPlayer p) {
         Item swordItem = UndyingMod.VOID_SWORD.get();
         if (hasItem(p, swordItem)) {
-            Msg.warn(p, UndyingMod.TAG).text("Already have the Void Sword").send();
+            Msg.warn(p, UndyingMod.TAG).bi("已经拥有虚空剑", "Already have the Void Sword").send();
             return;
         }
         ItemStack sword = new ItemStack(swordItem);
         sword.setHoverName(Component.literal("§5Void Sword"));
         if (!p.getInventory().add(sword)) {
-            Msg.warn(p, UndyingMod.TAG).text("Inventory full").send();
+            Msg.warn(p, UndyingMod.TAG).bi("背包已满", "Inventory full").send();
             return;
         }
         p.getInventory().setChanged();
-        Msg.ok(p, UndyingMod.TAG).text("Void Sword acquired").send();
+        Msg.ok(p, UndyingMod.TAG).bi("已获得虚空剑", "Void Sword acquired").send();
     }
 
     /** Right-click: clears every mob within {@code Const.SWORD_SWEEP_RANGE} (animals/neutrals included) */
@@ -53,15 +53,14 @@ public final class VoidSword {
             n++;
         }
         Msg.ok(p, UndyingMod.TAG)
-                .text("Cleared ").num(n)
-                .text(" entities").send();
+                .bi("已清除 " + n + " 个实体", "Cleared " + n + " entities").send();
     }
 
     /** Attack: starts the execution chain (does nothing if one is already running) */
     public static void startExecution(ServerPlayer p, Entity target) {
         if (target == null || !target.isAlive()) return;
         if (!Execution.start(p, target)) return;
-        Msg.info(p, "exec").text("target: ").dim(target.getName().getString()).send();
+        Msg.info(p, "exec").bi("目标：", "target: ").dim(target.getName().getString()).send();
     }
 
     private static boolean hasItem(ServerPlayer p, Item item) {

@@ -51,7 +51,7 @@ Everything this mod does, at a glance. Each item is detailed in its own section 
 
 | 功能 / Feature | 作用 / What it does |
 |---|---|
-| 配置界面 / Config screen | `O` 键打开；键位可在「控制 → 按键绑定」里改 / Opened with `O`; rebindable in Controls |
+| 配置界面 / Config screen | `O` 键打开，20 个开关；键位可在「控制 → 按键绑定」里改 / Opened with `O`, twenty switches; rebindable in Controls |
 | 领域白名单 / Domain allow-list | 按类别勾选 + 按实体搜索勾选 / Category toggles plus a searchable entity list |
 
 **联机防护 / Multiplayer**
@@ -159,6 +159,7 @@ implemented independently in code and does not share a single switch.
 
 | 方式 / Method | 操作 / Action |
 |---|---|
+| 图形界面 / GUI | `O` 键打开（可在「控制 → 按键绑定」改键）/ `O`, rebindable in Controls → Key Binds |
 | 聊天框 / Chat | `toggle` 或 `无敌` / `toggle` or `无敌` |
 | 指令 / Command | `/antigrief master` |
 | 配置文件 / Config | `config/undying-common.toml` 中的 `masterToggle` / `masterToggle` in `config/undying-common.toml` |
@@ -166,6 +167,10 @@ implemented independently in code and does not share a single switch.
 开启后聊天栏会输出 `无敌模式：开启`，关闭时输出 `无敌模式：关闭`。
 
 On enable the chat reports `无敌模式：开启`; on disable, `无敌模式：关闭`.
+
+**总开关的语义 / What the master switch means**：关掉总开关会连同它的全部子项一起关闭；关掉任意一个**子项**只影响那一项，总开关和其他子项保持原状。打开任何一项都不会隐式打开总开关——「我开了光环」不应该等于「我交出了无敌」。
+
+Turning the master switch off turns every switch off with it. Turning a **single child** off affects only that child: the master and the others keep their state. Turning something on never enables the master implicitly — "I turned the aura on" must not quietly mean "I handed out invulnerability".
 
 ### 死亡锁 / Death lock
 
@@ -491,6 +496,33 @@ The two mechanisms cover different cases and neither replaces the other: the ent
 player from reaching the multiplayer UI; the gate handles the case where the mod has already been
 installed on a server. Their failure directions also differ: the entrance ban fails open (a
 broken UI is more disruptive than an un-banned button), while the gate fails closed.
+
+---
+
+## 界面与语言 / Interface and language
+
+### 配置界面 / Config screen
+
+`O` 键打开（默认键位，可在「控制 → 按键绑定 → Undying」里改）。20 个开关两列排开，状态用颜色区分；右下两个入口分别进入「领域白名单」和关闭界面。所有改动即时写入 TOML，没有「保存」按钮——需要二次确认的勾选框是最容易被存错的东西。
+
+Opened with `O` (a real key binding, so it appears under Controls → Key Binds → Undying and can be rebound). Twenty switches in two columns; the buttons at the bottom open the domain allow-list editor or close the screen. Changes are written to the TOML immediately — there is no Save button, because a checkbox that needs a second confirmation is the thing that gets saved wrongly.
+
+### 语言 / Language
+
+四类文本，处理方式不同，理由也不同：
+
+Four kinds of text, handled differently on purpose:
+
+| 文本 / Text | 方式 / Approach | 理由 / Why |
+|---|---|---|
+| 图形界面 / GUI | `assets/undying/lang/en_us.json` + `zh_cn.json`，随游戏语言切换 / follows the game language | 空间有限，两种语言同时显示会撑破按钮 / no room for both |
+| 聊天与提示 / Chat | 中英同时显示，`中文 / English` / both, always | 一眼扫过，显示两种不会比一种更累；也不必猜玩家把游戏设成哪种语言 / read in motion; never shows the wrong one |
+| 配置注释 / Config comments | 英文在前，中文在后 / English first, then Chinese | Forge 的 TOML 注释没有本地化机制，只能写死在注释里 / Forge cannot localise TOML comments |
+| 开发者日志 / Logs | 仅英文 / English only | 给排查问题的人看，不是给玩家看的 / written for whoever debugs it, not for the player |
+
+新增文本的规矩：GUI 一律走语言键，不要在 `Screen` 里写死字符串；聊天用 `Msg.bi(中文, English)`；日志用英文。缺一个语言键时 Minecraft 会直接把键名显示出来，那是可见的错，不会静默。
+
+Rule for new text: GUI strings are language keys (never literals inside a `Screen`), chat uses `Msg.bi(chinese, english)`, logs stay English. A missing key shows up as the raw key in the UI — visible, not silent.
 
 ---
 

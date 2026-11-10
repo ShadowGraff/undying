@@ -74,16 +74,19 @@ public final class SelfGuard {
                 int shown = Math.min(failed.size(), 2);
                 for (int i = 0; i < shown; i++) {
                     SelfCheck.Probe pr = failed.get(i);
-                    Msg.warn(p, "self-check").text("inactive: ").dim(pr.name)
+                    Msg.warn(p, "self-check").bi("未生效：", "inactive: ").dim(pr.name)
                             .text(pr.detail == null || pr.detail.isEmpty() ? "" : "（" + pr.detail + ")")
                             .send();
                 }
-                Msg.warn(p, "self-check").num(failed.size()).text(" check(s) failed")
+                Msg.warn(p, "self-check")
+                        .bi(failed.size() + " 项检查未通过", failed.size() + " check(s) failed")
                         .link("[打开报告]", "/undying report").send();
             }
         } else if (p != null && full) {
-            Msg.ok(p, "self-check").text("all ").num(probes.size())
-                    .text(" protection checks passed").link("[报告]", "/undying report").send();
+            Msg.ok(p, "self-check")
+                    .bi("全部 " + probes.size() + " 项保护检查通过",
+                            "all " + probes.size() + " protection checks passed")
+                    .link("[报告 / Report]", "/undying report").send();
         }
 
         // Swallowed exceptions must surface too — the last piece of "no silent failure".
@@ -94,8 +97,10 @@ public final class SelfGuard {
             IntegrityGuard.LOGGER.warn("[self-check] swallowed-exception record: {}", summary);
             ReportLog.writeBlock("[self-check] swallowed: " + summary);
             if (p != null) {
-                Msg.warn(p, "self-check").text("swallowed ").num(swallowed)
-                        .text(" internal exception(s)").link("[查看详情]", "/undying report").send();
+                Msg.warn(p, "self-check")
+                        .bi("已吞掉 " + swallowed + " 个内部异常",
+                                "swallowed " + swallowed + " internal exception(s)")
+                        .link("[查看详情 / Details]", "/undying report").send();
             }
         }
     }

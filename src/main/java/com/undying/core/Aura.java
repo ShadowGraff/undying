@@ -58,9 +58,10 @@ public final class Aura {
             if (s.auraTimer <= 0) {
                 s.auraMode = Mode.OFF;
                 s.auraTimer = 0;
-                Msg.info(p, UndyingMod.TAG).text("Aura: OFF").actionBar().send();
+                Msg.info(p, UndyingMod.TAG).bi("光环：关闭", "Aura: OFF").actionBar().send();
             } else if (s.auraTimer % Const.TICKS_PER_SECOND == 0) {
-                Msg.info(p, UndyingMod.TAG).text("Aura ").dim("remaining ")
+                Msg.info(p, UndyingMod.TAG)
+                        .bi("光环剩余 ", "Aura remaining ")
                         .num(s.auraTimer / Const.TICKS_PER_SECOND).text("s").actionBar().send();
             }
         }

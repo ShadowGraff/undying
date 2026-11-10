@@ -33,20 +33,24 @@ public final class ReportCommand {
         try {
             java.io.File dir = ReportLog.directory();
             if (!dir.isDirectory() && !dir.mkdirs()) {
-                source.sendFailure(Component.literal("无法创建报告目录: " + dir.getAbsolutePath()));
+                source.sendFailure(Component.literal(
+                    "无法创建报告目录 / Cannot create report directory: " + dir.getAbsolutePath()));
                 return 0;
             }
 
             if (source.getServer() != null && source.getServer().isSingleplayer()) {
                 net.minecraft.Util.getPlatform().openUri(dir.toURI().toString());
-                source.sendSuccess(() -> Component.literal("已打开报告目录: " + dir.getAbsolutePath()), false);
+                source.sendSuccess(() -> Component.literal(
+                    "已打开报告目录 / Opened report directory: " + dir.getAbsolutePath()), false);
             } else {
-                source.sendSuccess(() -> Component.literal("报告目录: " + dir.getAbsolutePath()), false);
+                source.sendSuccess(() -> Component.literal(
+                    "报告目录 / Report directory: " + dir.getAbsolutePath()), false);
             }
             return 1;
         } catch (Throwable t) {
             ModLog.swallowed("ReportCommand.run", t);
-            source.sendFailure(Component.literal("打开报告目录失败，详见日志"));
+            source.sendFailure(Component.literal(
+                    "打开报告目录失败，详见日志 / Could not open the report directory; see the log"));
             return 0;
         }
     }

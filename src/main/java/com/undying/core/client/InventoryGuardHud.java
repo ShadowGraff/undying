@@ -6,6 +6,7 @@ import com.undying.core.PlayerState;
 import com.undying.core.UndyingMod;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.InputEvent;
@@ -149,13 +150,15 @@ public final class InventoryGuardHud {
             // Translucent, so the world stays visible behind it.
             g.fill(x, y, x + w, y + h, 0x90000000);
 
-            g.drawString(mc.font, "物品栏异常变化", x + 6, y + 6, 0xFF9090);
-            g.drawString(mc.font, "Y×3 回滚   N×3 忽略", x + 6, y + 21, 0xFFFFFF);
+            g.drawString(mc.font, Component.translatable("undying.inventory.title"), x + 6, y + 6, 0xFF9090);
+            g.drawString(mc.font, Component.translatable("undying.inventory.keys"), x + 6, y + 21, 0xFFFFFF);
             g.drawString(mc.font,
-                    "Y " + KEYS.yesCount() + "/3    N " + KEYS.noCount() + "/3",
+                    Component.translatable("undying.inventory.presses",
+                            KEYS.yesCount() + "/" + AnswerKeys.PRESSES_REQUIRED,
+                            KEYS.noCount() + "/" + AnswerKeys.PRESSES_REQUIRED),
                     x + 6, y + 35, 0xC8C8C8);
             g.drawString(mc.font,
-                    (ticksLeft / 20) + "s 后自动忽略",
+                    Component.translatable("undying.inventory.timeout", ticksLeft / 20),
                     x + 6, y + 49, 0x909090);
         } catch (Throwable t) {
             ModLog.swallowed("InventoryGuardHud.render", t);

@@ -120,7 +120,7 @@ public final class TickBudget {
             warnedInChat = true;
             try {
                 Msg.warn(p, "self-timing")
-                        .text("this mod costs about ")
+                        .bi("本模组开销约 ", "this mod costs about ")
                         .text(String.format("%.2f", avg / 1_000_000.0) + " ms")
                         .dim("(peak " + String.format("%.1f", max / 1_000_000.0) + " ms）")
                         .send();

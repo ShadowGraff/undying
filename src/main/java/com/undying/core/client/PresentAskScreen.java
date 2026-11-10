@@ -29,7 +29,7 @@ public class PresentAskScreen extends Screen {
     private boolean answered = false;
 
     public PresentAskScreen(Consumer<Boolean> onAnswer) {
-        super(Component.literal("Undying · 呈现控制 / Presentation control"));
+        super(Component.translatable("undying.ask.title"));
         this.onAnswer = onAnswer;
     }
 
@@ -39,12 +39,12 @@ public class PresentAskScreen extends Screen {
         int y = this.height / 2 + 46;
 
         this.addRenderableWidget(Button.builder(
-                        Component.literal("启用 / Enable"),
+                        Component.translatable("undying.ask.enable"),
                         b -> finish(true))
                 .bounds(cx - 155, y, 150, 20).build());
 
         this.addRenderableWidget(Button.builder(
-                        Component.literal("以后再说 / Not now"),
+                        Component.translatable("undying.ask.later"),
                         b -> finish(false))
                 .bounds(cx + 5, y, 150, 20).build());
     }
@@ -61,19 +61,19 @@ public class PresentAskScreen extends Screen {
         g.drawCenteredString(this.font, this.title, cx, y, 0xFFFFFF);
         y += 28;
         g.drawCenteredString(this.font,
-                Component.literal("可以只读扫描其他模组的 jar，报告哪些模组替换了原版资源"),
+                Component.translatable("undying.ask.body1"),
                 cx, y, 0xD0D0D0);
         y += 14;
         g.drawCenteredString(this.font,
-                Component.literal("（音效 / GUI 贴图 / 后处理着色器）。不修改任何文件，也不拦截任何东西。"),
+                Component.translatable("undying.ask.body2"),
                 cx, y, 0xD0D0D0);
         y += 24;
         g.drawCenteredString(this.font,
-                Component.literal("是否现在启用？"),
+                Component.translatable("undying.ask.body3"),
                 cx, y, 0xFFFFFF);
         y += 14;
         g.drawCenteredString(this.font,
-                Component.literal("之后可在 undying-common.toml 里随时修改"),
+                Component.translatable("undying.ask.body4"),
                 cx, y, 0x909090);
 
         super.render(g, mouseX, mouseY, partialTick);

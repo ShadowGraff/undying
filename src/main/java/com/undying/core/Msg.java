@@ -104,6 +104,23 @@ public final class Msg {
         return this;
     }
 
+    /**
+     * Append a bilingual sentence: Chinese first, then English in grey.
+     *
+     * <h3>Why both languages are always shown instead of following the game language</h3>
+     * Chat lines are read once, in motion, and this mod is used with modpacks whose language
+     * the player may not have set the same way. Showing both costs one line and never shows
+     * the wrong one. The GUI, where space matters, uses translation keys instead — see
+     * {@code assets/undying/lang/}.
+     *
+     * <p>Sentences with numbers should be formatted first:
+     * {@code .bi(String.format("已清除 %d 个实体", n), String.format("Cleared %d entities", n))}
+     */
+    public Msg bi(String zh, String en) {
+        sb.append(zh).append(" §7/ ").append(en).append(level.body);
+        return this;
+    }
+
     /** Switch to the action bar (the line above the hotbar); chat is the default */
     public Msg actionBar() {
         this.actionBar = true;

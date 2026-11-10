@@ -44,7 +44,7 @@ public class DomainAllowScreen extends Screen {
     private EditBox search;
 
     public DomainAllowScreen(Screen parent) {
-        super(Component.literal("领域 · 放行名单"));
+        super(Component.translatable("undying.domain.title"));
         this.parent = parent;
     }
 
@@ -76,7 +76,7 @@ public class DomainAllowScreen extends Screen {
         // ── Search box ──
         int listTop = startY + perCol * (rowH + 4) + 8;
         this.search = new EditBox(this.font, this.width / 2 - 120, listTop - 22, 240, 18,
-                Component.literal("搜索实体"));
+                Component.translatable("undying.domain.search"));
         this.search.setResponder(s -> rebuildList());
         this.addRenderableWidget(this.search);
 
@@ -86,13 +86,15 @@ public class DomainAllowScreen extends Screen {
         this.addWidget(this.list);
         rebuildList();
 
-        this.addRenderableWidget(Button.builder(Component.literal("返回"), b -> onClose())
+        this.addRenderableWidget(Button.builder(Component.translatable("gui.back"), b -> onClose())
                 .bounds(this.width / 2 - 75, this.height - 30, 150, 20).build());
     }
 
     private Component labelFor(MobCategory cat) {
         boolean on = categoryAllowed(cat);
-        return Component.literal(cat.name() + ": " + (on ? "§a放行" : "§c排斥"));
+        return Component.literal(cat.name()).append(": ").append(
+                Component.translatable(on ? "undying.domain.allow" : "undying.domain.repel")
+                        .withStyle(on ? net.minecraft.ChatFormatting.GREEN : net.minecraft.ChatFormatting.RED));
     }
 
     private boolean categoryAllowed(MobCategory cat) {
@@ -151,14 +153,14 @@ public class DomainAllowScreen extends Screen {
 
         g.drawCenteredString(this.font, this.title, this.width / 2, 12, 0xFFFFFF);
         g.drawCenteredString(this.font,
-                Component.literal("勾选类别或具体实体；未勾选的一律会被推开"),
+                Component.translatable("undying.domain.hint"),
                 this.width / 2, 26, 0x909090);
 
         super.render(g, mouseX, mouseY, partialTick);
 
         // The list draws itself through super.render; the hint goes underneath afterwards.
         g.drawCenteredString(this.font,
-                Component.literal("分类共 " + MobCategory.values().length + " 项 · 实体点击即切换"),
+                Component.translatable("undying.domain.footer", MobCategory.values().length),
                 this.width / 2, this.height - 44, 0x707070);
     }
 

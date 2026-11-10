@@ -31,7 +31,7 @@ public final class AntiGriefCommand {
             ServerPlayer p = ctx.getSource().getPlayerOrException();
             DeathLock.markSuicide(p.getUUID());
             p.setHealth(0F);
-            Msg.warn(p, UndyingMod.TAG).text("Suicide command accepted...").send();
+            Msg.warn(p, UndyingMod.TAG).bi("已接受自杀指令…", "Suicide command accepted...").send();
             return 1;
         }));
 
@@ -42,9 +42,9 @@ public final class AntiGriefCommand {
             ServerPlayer p = ctx.getSource().getPlayerOrException();
             if (!Environment.isAllowed(p)) return 0;   // single-player only
             if (ImmortalMode.toggle(p)) {
-                Msg.ok(p, UndyingMod.TAG).text("immortal mode").send();
+                Msg.ok(p, UndyingMod.TAG).bi("不朽模式", "immortal mode").send();
             } else {
-                Msg.plain(p, UndyingMod.TAG).text("normal mode").send();
+                Msg.plain(p, UndyingMod.TAG).bi("普通模式", "normal mode").send();
             }
             return 1;
         }));

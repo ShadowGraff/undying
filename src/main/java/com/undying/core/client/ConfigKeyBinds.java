@@ -3,11 +3,9 @@ package com.undying.core.client;
 import com.undying.core.ModLog;
 import com.undying.core.UndyingMod;
 import com.mojang.blaze3d.platform.InputConstants;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.KeyMapping;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
-import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.lwjgl.glfw.GLFW;
@@ -15,20 +13,30 @@ import org.lwjgl.glfw.GLFW;
 /**
  * The O key that opens the configuration screen.
  *
- * <p>Registered as a real {@link KeyMapping} rather than polled directly: that is what makes
- * it appear in Options → Controls → Key Binds, so the player can rebind it without this mod
- * shipping a binding screen. The default is O, unused by vanilla.
+ * <h3>Why this is registered on the MOD bus and polled on the FORGE bus</h3>
+ * {@code RegisterKeyMappingsEvent} is a <b>mod-bus</b> event that fires once while the client
+ * is starting. This class used to carry both the registration and the per-tick polling under a
+ * single {@code @Mod.EventBusSubscriber}, which defaults to the <b>forge</b> bus — so the
+ * registration handler was never called, the key was never registered, and O appeared nowhere
+ * in Options → Controls. Nothing logged an error; the key simply did not exist.
+ *
+ * <p>An annotation is per class, so the two buses need two classes. The mapping itself lives
+ * here, where it is registered; polling lives in {@link ConfigKeyHandler}.
+ *
+ * <p>The name and category are translation keys, so the entry in Controls reads in the
+ * player's language instead of always English.
  */
-@Mod.EventBusSubscriber(value = Dist.CLIENT, modid = UndyingMod.MODID)
+@Mod.EventBusSubscriber(modid = UndyingMod.MODID, value = Dist.CLIENT,
+        bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class ConfigKeyBinds {
 
     private ConfigKeyBinds() {}
 
     public static final KeyMapping OPEN_CONFIG = new KeyMapping(
-            "打开 Undying 配置",
+            "key.undying.open_config",
             InputConstants.Type.KEYSYM,
             GLFW.GLFW_KEY_O,
-            "Undying");
+            "key.categories.undying");
 
     @SubscribeEvent
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
@@ -36,23 +44,6 @@ public final class ConfigKeyBinds {
             event.register(OPEN_CONFIG);
         } catch (Throwable t) {
             ModLog.swallowed("ConfigKeyBinds.register", t);
-        }
-    }
-
-    @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
-        try {
-            Minecraft mc = Minecraft.getInstance();
-            // Drain the queue even while a screen is open, otherwise clicks pile up and one
-            // key press appears to fire several times later.
-            while (OPEN_CONFIG.consumeClick()) {
-                if (mc.screen == null && mc.player != null) {
-                    mc.setScreen(new UndyingConfigScreen(null));
-                }
-            }
-        } catch (Throwable t) {
-            ModLog.swallowed("ConfigKeyBinds.tick", t);
         }
     }
 }
