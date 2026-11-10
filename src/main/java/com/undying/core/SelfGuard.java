@@ -49,8 +49,13 @@ public final class SelfGuard {
             StringBuilder sb = new StringBuilder("[self-check] results:");
             for (SelfCheck.Probe pr : probes) sb.append("\n    ").append(pr);
             String block = sb.toString();
-            IntegrityGuard.LOGGER.info(block);
+            // Detail goes to the report file only. Writing the full list to debug.log as
+            // well kept growing a file this mod does not own — and one summary line is
+            // enough when everything passed. Failures below still log in full, because
+            // those are rare and are the thing worth keeping.
             ReportLog.writeBlock(block);
+            IntegrityGuard.LOGGER.info("[self-check] {} probe(s), {} failed (detail: logs/undying/)",
+                    probes.size(), failed.size());
         }
 
         if (!failed.isEmpty()) {
