@@ -55,6 +55,9 @@ public class ModConfig {
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> DOMAIN_ALLOW_CATEGORIES;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> DOMAIN_ALLOW_ENTITIES;
 
+    // ── Inventory guard (watch for inventory changes the player did not cause) ──
+    public static final ForgeConfigSpec.BooleanValue INVENTORY_GUARD;
+
     static {
         ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
         b.push("undying");
@@ -166,6 +169,17 @@ public class ModConfig {
         DOMAIN_ALLOW_ENTITIES = b.comment(
                 "Exact entity ids allowed as well, e.g. minecraft:cow. Case-insensitive.")
                 .defineList("allowedEntities", new ArrayList<>(), o -> o instanceof String);
+        b.pop();
+
+        // ── Inventory guard ──
+        b.comment("=== Inventory guard (ask before accepting a suspicious bulk change) ===")
+                .push("inventoryGuard");
+        INVENTORY_GUARD = b.comment(
+                "Watches the inventory for bulk changes with no visible cause (no open container,",
+                "no drop, no pickup) and asks whether to roll them back. Nothing is blocked:",
+                "the change is accepted first, and only reverted if the player says so.",
+                "An unanswered prompt does nothing.")
+                .define("enabled", true);
         b.pop();
 
         b.pop();

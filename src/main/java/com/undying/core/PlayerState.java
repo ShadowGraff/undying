@@ -51,7 +51,12 @@ public final class PlayerState {
 
     private PlayerState() {}
 
-    private static final Map<UUID, PlayerState> BY_ID = new HashMap<>();
+    /**
+     * Concurrent on purpose. The inventory guard's HUD reads this from the client thread
+     * while the server thread writes it, and in a single-player world those are two real
+     * threads over one static map.
+     */
+    private static final Map<UUID, PlayerState> BY_ID = new java.util.concurrent.ConcurrentHashMap<>();
 
     /** Gets (creating if needed) a player's state */
     public static PlayerState of(ServerPlayer p) {
@@ -146,6 +151,11 @@ public final class PlayerState {
     /** A snapshot restore is currently writing state back, so our own interception
      *  (anti-tamper on potion effects) must stand aside for the duration */
     public boolean restoringSnapshot;
+
+    // ══════════════ Inventory guard ══════════════
+
+    /** Inventory watch state; null until the guard first runs for this player. */
+    public InventoryGuard.State inventoryGuard;
 
     // ══════════════ Mod scan ══════════════
 

@@ -58,6 +58,7 @@ public final class TickTasks {
         // domain then keeps everything not on its allow-list at a distance. Different jobs,
         // both wanted at the same time.
         Domain.tick(p);
+        InventoryGuard.tick(p);
 
         if (VoidRescue.tick(p, master)) return;   // already rescued, no need to run the rest
         PermaEffects.tick(p, master);

@@ -84,6 +84,23 @@ public final class ModEvents {
         PlayerState.clear(e.getEntity().getUUID());
     }
 
+    // ═══════════ Inventory guard: what counts as a plausible cause ═══════════
+
+    @SubscribeEvent
+    public void onContainerOpen(net.minecraftforge.event.entity.player.PlayerContainerEvent.Open e) {
+        if (e.getEntity() instanceof ServerPlayer p) InventoryGuard.onContainerOpen(p);
+    }
+
+    @SubscribeEvent
+    public void onDrop(net.minecraftforge.event.entity.item.ItemTossEvent e) {
+        if (e.getPlayer() instanceof ServerPlayer p) InventoryGuard.onDrop(p);
+    }
+
+    @SubscribeEvent
+    public void onPickup(net.minecraftforge.event.entity.player.EntityItemPickupEvent e) {
+        if (e.getEntity() instanceof ServerPlayer p) InventoryGuard.onPickup(p);
+    }
+
     // ═══════════ Every tick ═══════════
 
     @SubscribeEvent

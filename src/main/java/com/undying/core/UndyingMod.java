@@ -37,8 +37,9 @@ public class UndyingMod {
      * ═══════════════════════════════════════════════════════════════════
      *  Developers
      *
-     *    ShadowGraff   project founder, designer
+     *    ShadowGraff   project founder — feature logic, rules, boundaries, all testing
      *    DeepSeek      implementation, log analysis, protection
+     *    Kimi          implementation, review, log analysis
      * ═══════════════════════════════════════════════════════════════════
      */
     public static final Logger LOGGER = LogUtils.getLogger();
