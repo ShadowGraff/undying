@@ -49,6 +49,12 @@ public class ModConfig {
     public static final ForgeConfigSpec.BooleanValue THREAT_SCAN_ASKED;    // whether the one-time in-game prompt has been shown
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLACKLISTED_MODS;
 
+    // ── Domain (repel mobs that are not on the allow-list) ──
+    public static final ForgeConfigSpec.BooleanValue DOMAIN_ENABLED;
+    public static final ForgeConfigSpec.IntValue DOMAIN_RANGE;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> DOMAIN_ALLOW_CATEGORIES;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> DOMAIN_ALLOW_ENTITIES;
+
     static {
         ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
         b.push("undying");
@@ -141,6 +147,25 @@ public class ModConfig {
         BLACKLISTED_MODS = b.comment(
                 "Mod ids considered hostile. Reported on world join.")
                 .defineList("blacklistedMods", Arrays.asList(), o -> o instanceof String);
+        b.pop();
+
+        // ── Domain ──
+        b.comment("=== Domain (mobs outside the allow-list cannot approach) ===").push("domain");
+        DOMAIN_ENABLED = b.comment(
+                "Master switch. Mobs are pushed away, never killed: nothing dies and no drops appear.",
+                "Runs alongside the aura, which is the one that clears hostile mobs.")
+                .define("enabled", false);
+        DOMAIN_RANGE = b.comment("Radius in blocks. Anything closer than this is pushed out.")
+                .defineInRange("range", 8, 1, 32);
+        DOMAIN_ALLOW_CATEGORIES = b.comment(
+                "Mob categories that may approach. Defaults are the vanilla friendly ones.",
+                "MONSTER is absent on purpose: it also covers neutral mobs such as endermen.")
+                .defineList("allowedCategories",
+                        new ArrayList<>(DomainFilter.DEFAULT_ALLOWED_CATEGORIES),
+                        o -> o instanceof String);
+        DOMAIN_ALLOW_ENTITIES = b.comment(
+                "Exact entity ids allowed as well, e.g. minecraft:cow. Case-insensitive.")
+                .defineList("allowedEntities", new ArrayList<>(), o -> o instanceof String);
         b.pop();
 
         b.pop();

@@ -54,6 +54,11 @@ public final class TickTasks {
             Aura.killHostilesNear(p);
         }
 
+        // Domain runs after the aura on purpose: the aura removes what is hostile, the
+        // domain then keeps everything not on its allow-list at a distance. Different jobs,
+        // both wanted at the same time.
+        Domain.tick(p);
+
         if (VoidRescue.tick(p, master)) return;   // already rescued, no need to run the rest
         PermaEffects.tick(p, master);
     }
