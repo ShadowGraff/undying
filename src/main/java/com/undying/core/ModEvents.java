@@ -65,6 +65,7 @@ public final class ModEvents {
     @SubscribeEvent
     public void onCommands(RegisterCommandsEvent event) {
         AntiGriefCommand.register(event.getDispatcher());
+        ReportCommand.register(event.getDispatcher());
     }
 
     // ═══════════ Sessions ═══════════
