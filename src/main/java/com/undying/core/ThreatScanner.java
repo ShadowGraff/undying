@@ -55,8 +55,14 @@ public final class ThreatScanner {
         }
     }
 
-    /** Scan result (cached in-process) */
-    private static final List<Finding> FINDINGS = new ArrayList<>();
+    /**
+     * Scan result (cached in-process).
+     *
+     * <p>Copy-on-write because the in-game prompt can trigger a rescan from the client
+     * thread while the server thread is walking this list to report it. A plain ArrayList
+     * would throw ConcurrentModificationException at exactly the wrong moment.
+     */
+    private static final List<Finding> FINDINGS = new java.util.concurrent.CopyOnWriteArrayList<>();
     private static volatile boolean scanned = false;
 
     private ThreatScanner() {}
@@ -98,6 +104,21 @@ public final class ThreatScanner {
         } catch (Throwable t) {
             LOGGER.warn("[mod-scan] scan error (ignored): {}", t.toString());
         }
+    }
+
+    /**
+     * Re-run the scan after the switch was turned on at runtime.
+     *
+     * <p>Without this the scan would only ever run at startup: a player who answers "yes" to
+     * the in-game prompt would see no report until the next launch, which reads exactly like
+     * a broken feature. Cost is one pass over the mod jars' central directories — tens of
+     * milliseconds, once, on an explicit user action.
+     */
+    public static void rescan() {
+        FINDINGS.clear();
+        scanned = false;
+        vanillaTried = false;   // the vanilla list may have been unavailable before; retry once
+        scanOnce();
     }
 
     // ═══════════ The four dimensions ═══════════

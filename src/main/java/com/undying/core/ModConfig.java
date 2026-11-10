@@ -46,6 +46,7 @@ public class ModConfig {
     public static final ForgeConfigSpec.BooleanValue THREAT_SCAN_JAR;      // jar heuristic scan, off by default (relatively slow)
     public static final ForgeConfigSpec.BooleanValue THREAT_SCAN_BEHAVIOR; // behaviour analysis, off by default
     public static final ForgeConfigSpec.BooleanValue THREAT_SCAN_RESOURCE_OVERRIDE; // vanilla resource override scan, on by default
+    public static final ForgeConfigSpec.BooleanValue THREAT_SCAN_ASKED;    // whether the one-time in-game prompt has been shown
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLACKLISTED_MODS;
 
     static {
@@ -133,6 +134,10 @@ public class ModConfig {
                 "REPLACE vanilla sounds / gui textures / shaders rather than adding new ones.",
                 "Aggregated per mod by category. Read-only zip scan; no file is modified.")
                 .define("resourceOverrides", true);
+        THREAT_SCAN_ASKED = b.comment(
+                "Whether the player has already been asked, in game, whether to enable the scan.",
+                "Set automatically; do not edit unless you want the prompt to appear again.")
+                .define("asked", false);
         BLACKLISTED_MODS = b.comment(
                 "Mod ids considered hostile. Reported on world join.")
                 .defineList("blacklistedMods", Arrays.asList(), o -> o instanceof String);
