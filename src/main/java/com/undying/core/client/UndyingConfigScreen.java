@@ -60,6 +60,7 @@ public class UndyingConfigScreen extends Screen {
         add("saveSnapshot", "状态回滚", ModConfig.SAVE_SNAPSHOT);
         add("autoRestore", "自动回滚", ModConfig.SAVE_SNAPSHOT_RESTORE);
         add("threatScan", "模组扫描", ModConfig.THREAT_SCAN);
+        add("inventoryGuard", "物品栏快照", ModConfig.INVENTORY_GUARD);
         add("domain", "领域（排斥生物）", ModConfig.DOMAIN_ENABLED);
     }
 
@@ -117,19 +118,21 @@ public class UndyingConfigScreen extends Screen {
      * tiny and this only happens on a click.
      */
     private void flip(Toggle t) {
-        boolean next;
-        try {
-            next = !t.get.get();
-        } catch (Throwable ignored) {
-            return;
+        int index = toggles.indexOf(t);
+        if (index < 0) return;
+
+        boolean[] current = new boolean[toggles.size()];
+        for (int i = 0; i < toggles.size(); i++) {
+            try {
+                current[i] = toggles.get(i).get.get();
+            } catch (Throwable ignored) {
+                current[i] = false;   // one unreadable entry must not strand the others
+            }
         }
 
-        if (!next) {
-            // The user's rule: any switch going off takes the whole set down, including the
-            // master switch. Never turn the master switch on implicitly.
-            for (Toggle other : toggles) setQuietly(other, false);
-        } else {
-            setQuietly(t, true);
+        boolean[] next = CascadeRule.afterFlip(current, index);
+        for (int i = 0; i < toggles.size(); i++) {
+            if (next[i] != current[i]) setQuietly(toggles.get(i), next[i]);
         }
 
         ModConfig.save();

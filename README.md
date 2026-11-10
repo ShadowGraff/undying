@@ -25,6 +25,7 @@ Everything this mod does, at a glance. Each item is detailed in its own section 
 | 功能 / Feature | 作用 / What it does |
 |---|---|
 | 状态回滚 / State rollback | 定期快照玩家状态，死亡或异常时还原；不经过原版方法链 / Periodic snapshots restored on death or corruption, bypassing the vanilla chain |
+| 物品栏快照 / Inventory guard | 一次变动 5 格以上且无合理原因时，左下角询问是否回滚（Y×3 / N×3，15 秒不作答即忽略）/ Asks in the corner when 5+ slots change with no cause; Y×3 to roll back, silent timeout means do nothing |
 
 **环境与生物 / Environment and mobs**
 

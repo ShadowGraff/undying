@@ -29,9 +29,6 @@ public final class InventoryGuard {
 
     private InventoryGuard() {}
 
-    /** Slots that must differ at once before the change is worth asking about. */
-    private static final int SUSPICIOUS_SLOTS = 5;
-
     /** How long an ordinary action counts as "the cause" of a change. */
     private static final int LEGAL_WINDOW_TICKS = 40; // 2 seconds
 
@@ -104,19 +101,26 @@ public final class InventoryGuard {
                 s.rollbackTo = null;
             }
 
-            int changed = countDiffering(now, s.lastSlots);
+            int changed = InventoryDiff.countDiffering(now, s.lastSlots);
 
             // A pending question must not be replaced by a newer one; the rollback target is
             // the state from before the suspicious change, and overwriting it would make the
             // question meaningless.
             if (changed > 0 && s.askId == 0) {
                 boolean explained = hasLegalCause(p, s);
-                if (!explained && changed >= SUSPICIOUS_SLOTS) {
+                if (InventoryDiff.deservesQuestion(changed, explained)) {
                     s.askId = System.nanoTime();
                     s.rollbackTo = s.lastStacks == null ? copy(inv) : s.lastStacks.clone();
                     s.askExpiresTick = p.tickCount + ASK_TTL_TICKS;
-                    ModLog.swallowed("InventoryGuard.suspicious",
-                            new IllegalStateException(changed + " slot(s) changed with no cause"));
+                    // Not ModLog.swallowed: this is the feature working, not an exception being
+                    // eaten. Recording it there would make the self-check report "swallowed N
+                    // internal exception(s)" every time the guard does its job — a false alarm
+                    // that trains the player to ignore the one counter that must stay at zero.
+                    IntegrityGuard.LOGGER.warn(
+                            "[inventory] {} slot(s) changed with no cause ({})",
+                            changed, p.getName().getString());
+                    ReportLog.writeBlock("[inventory] " + p.getName().getString()
+                            + ": " + changed + " slot(s) changed at tick " + p.tickCount);
                 }
                 // Baseline advances either way; otherwise the same difference would be
                 // reported every tick until the player answered.
@@ -182,8 +186,7 @@ public final class InventoryGuard {
 
     // ═══════════ Fingerprint ═══════════
 
-    private static int[] fingerprint(Inventory inv) {
-        int size = inv.getContainerSize();
+    private static int[] fingerprint(Inventory inv) {        int size = inv.getContainerSize();
         int[] out = new int[size];
         for (int i = 0; i < size; i++) {
             ItemStack stack = inv.getItem(i);
@@ -198,17 +201,6 @@ public final class InventoryGuard {
             out[i] = h;
         }
         return out;
-    }
-
-    private static int countDiffering(int[] a, int[] b) {
-        int n = 0;
-        int len = Math.min(a.length, b.length);
-        for (int i = 0; i < len; i++) {
-            if (a[i] != b[i]) n++;
-        }
-        // A size change (modded inventory) also counts as a difference.
-        n += Math.abs(a.length - b.length);
-        return n;
     }
 
     private static ItemStack[] copy(Inventory inv) {

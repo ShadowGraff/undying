@@ -37,8 +37,8 @@ public final class InventoryGuardHud {
     private static final int TTL_TICKS = 20 * 15;
 
     private static long shownAskId = 0;
-    private static int yesPresses = 0;
-    private static int noPresses = 0;
+    /** The three-press rule, extracted so it can be tested without a running client. */
+    private static final AnswerKeys KEYS = new AnswerKeys();
     private static int ticksLeft = 0;
 
     // ═══════════ State sync ═══════════
@@ -63,8 +63,7 @@ public final class InventoryGuardHud {
 
             if (askId != shownAskId) {
                 shownAskId = askId;
-                yesPresses = 0;
-                noPresses = 0;
+                KEYS.reset();
                 ticksLeft = TTL_TICKS;
             }
 
@@ -92,13 +91,9 @@ public final class InventoryGuardHud {
 
         try {
             if (event.getKey() == GLFW.GLFW_KEY_Y) {
-                yesPresses++;
-                noPresses = 0;
-                if (yesPresses >= 3) confirm(mc);
+                if (KEYS.press(true) == AnswerKeys.Decision.CONFIRM) confirm(mc);
             } else if (event.getKey() == GLFW.GLFW_KEY_N) {
-                noPresses++;
-                yesPresses = 0;
-                if (noPresses >= 3) decline(mc);
+                if (KEYS.press(false) == AnswerKeys.Decision.DECLINE) decline(mc);
             }
         } catch (Throwable t) {
             ModLog.swallowed("InventoryGuardHud.key", t);
@@ -157,7 +152,7 @@ public final class InventoryGuardHud {
             g.drawString(mc.font, "物品栏异常变化", x + 6, y + 6, 0xFF9090);
             g.drawString(mc.font, "Y×3 回滚   N×3 忽略", x + 6, y + 21, 0xFFFFFF);
             g.drawString(mc.font,
-                    "Y " + yesPresses + "/3    N " + noPresses + "/3",
+                    "Y " + KEYS.yesCount() + "/3    N " + KEYS.noCount() + "/3",
                     x + 6, y + 35, 0xC8C8C8);
             g.drawString(mc.font,
                     (ticksLeft / 20) + "s 后自动忽略",
@@ -169,8 +164,7 @@ public final class InventoryGuardHud {
 
     private static void reset() {
         shownAskId = 0;
-        yesPresses = 0;
-        noPresses = 0;
+        KEYS.reset();
         ticksLeft = 0;
     }
 }
