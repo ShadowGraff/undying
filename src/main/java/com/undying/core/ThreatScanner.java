@@ -148,11 +148,41 @@ public final class ThreatScanner {
         }
     }
 
+    /**
+     * Resolve a mod's jar to a real file on disk.
+     *
+     * <p>Forge 1.20.1 mounts every mod through a {@code SecureJar} on an in-memory file
+     * system, so {@code getFilePath()} is a jimfs path and {@code Path.toFile()} throws
+     * {@code UnsupportedOperationException: Path not associated with default file system}.
+     * That is exactly how the first version of the resource scan failed on <i>every single
+     * mod</i> while its unit tests passed — the tests used real files.
+     *
+     * <p>Two attempts, cheapest first. Null means "skip this mod", never "no findings".
+     */
+    private static Path resolveRealJar(net.minecraftforge.forgespi.language.IModInfo info) {
+        try {
+            Path p = info.getOwningFile().getFile().getFilePath();
+            if (p != null && Files.isRegularFile(p)) return p;
+        } catch (Throwable t) {
+            ModLog.swallowed("ThreatScanner.resolveRealJar.direct", t);
+        }
+        try {
+            String fileName = info.getOwningFile().getFile().getFileName();
+            if (fileName != null && !fileName.isEmpty()) {
+                Path p = net.minecraftforge.fml.loading.FMLPaths.MODSDIR.get().resolve(fileName);
+                if (Files.isRegularFile(p)) return p;
+            }
+        } catch (Throwable t) {
+            ModLog.swallowed("ThreatScanner.resolveRealJar.modsdir", t);
+        }
+        return null;
+    }
+
     /** ③ jar features: abnormal size + suspicious class names */
     private static void checkJar(String id, String name, net.minecraftforge.forgespi.language.IModInfo info) {
         try {
-            Path jar = info.getOwningFile().getFile().getFilePath();
-            if (jar == null || !Files.exists(jar)) return;
+            Path jar = resolveRealJar(info);
+            if (jar == null) return;
 
             long size = Files.size(jar);
             // Abnormal size: extremely small (< 1 KB, possibly a stub) or extremely large
@@ -200,8 +230,8 @@ public final class ThreatScanner {
         // real finding under thousands of vanilla entries.
         if ("minecraft".equals(id) || "forge".equals(id) || UndyingMod.MODID.equals(id)) return;
         try {
-            Path jar = info.getOwningFile().getFile().getFilePath();
-            if (jar == null || !Files.isRegularFile(jar)) return;
+            Path jar = resolveRealJar(info);
+            if (jar == null) return;
 
             Set<String> declared = ResourceOverrides.readDeclaredPaths(jar);
             if (declared.isEmpty()) return;

@@ -1,5 +1,6 @@
 package com.undying.core.mixin;
 
+import com.undying.core.client.LanProbe;
 import net.minecraft.client.server.IntegratedServer;
 import net.minecraft.client.server.LanServerPinger;
 import org.spongepowered.asm.mixin.Mixin;
@@ -61,7 +62,7 @@ import org.spongepowered.asm.mixin.Shadow;
  * on a dedicated server, where {@code IntegratedServer} does not exist.
  */
 @Mixin(IntegratedServer.class)
-public abstract class MixinIntegratedServerLan {
+public abstract class MixinIntegratedServerLan implements LanProbe {
 
     /**
      * The LAN pinger. Present only while the world is published to LAN.
@@ -77,6 +78,7 @@ public abstract class MixinIntegratedServerLan {
     /**
      * @return true when this world is currently open to LAN
      */
+    @Override
     public boolean undying$isPublishedToLan() {
         return f_120018_ != null;
     }

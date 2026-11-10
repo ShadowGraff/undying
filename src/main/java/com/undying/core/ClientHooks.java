@@ -1,6 +1,6 @@
 package com.undying.core;
 
-import com.undying.core.mixin.MixinIntegratedServerLan;
+import com.undying.core.client.LanProbe;
 import net.minecraft.client.server.IntegratedServer;
 import net.minecraft.server.MinecraftServer;
 import net.minecraftforge.api.distmarker.Dist;
@@ -45,7 +45,12 @@ public class ClientHooks {
     public static boolean isLanPublished(MinecraftServer server) {
         try {
             if (!(server instanceof IntegratedServer integrated)) return false;
-            return ((MixinIntegratedServerLan) (Object) integrated).undying$isPublishedToLan();
+            // Cast to the plain interface, never to the mixin class: the mixin is merged
+            // into IntegratedServer and does not exist as a class at runtime. Casting to it
+            // raised NoClassDefFoundError("... is invalid") on every call, which silently
+            // degraded the structural LAN check to the heuristic D-008 already proved
+            // unreliable — i.e. an open-to-LAN world stayed fully protected.
+            return ((LanProbe) integrated).undying$isPublishedToLan();
         } catch (Throwable t) {
             // "This signal says nothing", not "not published" — Environment OR-s the signals,
             // so returning false here cannot open the gate on its own.
