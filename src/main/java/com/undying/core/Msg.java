@@ -51,6 +51,8 @@ public final class Msg {
     private final Level level;
     private final StringBuilder sb = new StringBuilder();
     private boolean actionBar = false;
+    /** Optional clickable tail (see {@link #link}); null when the message is plain text. */
+    private Component tail = null;
 
     private Msg(ServerPlayer player, Level level, String tag) {
         this.player = player;
@@ -108,12 +110,38 @@ public final class Msg {
         return this;
     }
 
+    /**
+     * Append a clickable tail — used so a one-line summary can still lead to the full report.
+     *
+     * <p>Kept as a separate component because the body is a single literal built from a
+     * StringBuilder with legacy colour codes; a click event has to be attached to its own
+     * component, not to the whole line.
+     *
+     * @param label   text shown to the player, e.g. "[打开报告]"
+     * @param command command run on click; must start with '/'
+     */
+    public Msg link(String label, String command) {
+        try {
+            this.tail = Component.literal(" " + label).withStyle(s -> s
+                    .withColor(net.minecraft.ChatFormatting.AQUA)
+                    .withClickEvent(new net.minecraft.network.chat.ClickEvent(
+                            net.minecraft.network.chat.ClickEvent.Action.RUN_COMMAND, command))
+                    .withHoverEvent(new net.minecraft.network.chat.HoverEvent(
+                            net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT,
+                            Component.literal("点击执行 " + command))));
+        } catch (Throwable t) {
+            // A message must never fail to send because its link could not be built.
+            ModLog.swallowed("Msg.link", t);
+        }
+        return this;
+    }
+
     // ═══════════ Delivery ═══════════
 
     /** Send (server-side players only; on the client use build() + displayClientMessage) */
     public void send() {
         if (player == null) return;
-        player.sendSystemMessage(Component.literal(sb.toString()), actionBar);
+        player.sendSystemMessage(build(), actionBar);
     }
 
     /**
@@ -130,6 +158,7 @@ public final class Msg {
 
     /** Build the Component directly (for when you deliver it yourself, e.g. disconnect text) */
     public Component build() {
-        return Component.literal(sb.toString());
+        Component base = Component.literal(sb.toString());
+        return tail == null ? base : Component.empty().append(base).append(tail);
     }
 }

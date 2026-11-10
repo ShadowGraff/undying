@@ -162,7 +162,12 @@ public final class ThreatScanner {
     private static Path resolveRealJar(net.minecraftforge.forgespi.language.IModInfo info) {
         try {
             Path p = info.getOwningFile().getFile().getFilePath();
-            if (p != null && Files.isRegularFile(p)) return p;
+            // isRegularFile() alone is not enough: it answers correctly for jimfs paths
+            // too, so a SecureJar path would pass this test and only explode later in
+            // Path.toFile(). The file system identity is the actual question.
+            if (p != null
+                    && p.getFileSystem() == java.nio.file.FileSystems.getDefault()
+                    && Files.isRegularFile(p)) return p;
         } catch (Throwable t) {
             ModLog.swallowed("ThreatScanner.resolveRealJar.direct", t);
         }
@@ -315,11 +320,17 @@ public final class ThreatScanner {
         if (s.announced) return;
         s.announced = true;
 
+        // Detail goes to the report file; the chat box gets one line, the mod ids, and a link.
+        StringBuilder block = new StringBuilder("[mod-scan] ").append(FINDINGS.size()).append(" finding(s):");
+        for (Finding f : FINDINGS) block.append("\n  · ").append(f.describe());
+        ReportLog.writeBlock(block.toString());
+
+        java.util.StringJoiner names = new java.util.StringJoiner(", ");
+        for (Finding f : FINDINGS) names.add(f.modId());
+
         Msg.info(p, "mod-scan").text("detected ").num(FINDINGS.size())
-                .text(" mod(s) worth noting:").send();
-        for (Finding f : FINDINGS) {
-            Msg.plain(p, null).text("  · ").text(f.describe()).send();
-        }
+                .text(" mod(s) worth noting").link("[打开报告]", "/undying report").send();
+        Msg.plain(p, null).text("  ").text(names.toString()).send();
         Msg.plain(p, null).text("  (heuristic hints only; not proof of malicious intent)").send();
     }
 

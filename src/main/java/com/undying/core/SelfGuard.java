@@ -42,11 +42,15 @@ public final class SelfGuard {
             if (!pr.ok) failed.add(pr);
         }
 
-        // Log: the complete list is written only when full, to avoid spamming
+        // The full list goes to the report file, not to chat. The chat box has no history
+        // management, so a ten-line block on every world entry was the main source of
+        // scroll fill; the file keeps the detail and the chat keeps one line.
         if (full) {
             StringBuilder sb = new StringBuilder("[self-check] results:");
             for (SelfCheck.Probe pr : probes) sb.append("\n    ").append(pr);
-            IntegrityGuard.LOGGER.info(sb.toString());
+            String block = sb.toString();
+            IntegrityGuard.LOGGER.info(block);
+            ReportLog.writeBlock(block);
         }
 
         if (!failed.isEmpty()) {
@@ -55,27 +59,38 @@ public final class SelfGuard {
             StringBuilder sb = new StringBuilder();
             sb.append("[self-check] WARN: ").append(failed.size()).append(" protection check(s) may be inactive:");
             for (SelfCheck.Probe pr : failed) sb.append("\n    ").append(pr);
-            IntegrityGuard.LOGGER.warn(sb.toString());
+            String block = sb.toString();
+            IntegrityGuard.LOGGER.warn(block);
+            ReportLog.writeBlock(block);
 
             if (p != null) {
-                for (SelfCheck.Probe pr : failed) {
-                    Msg.warn(p, "self-check").text("protection inactive: ").dim(pr.name)
+                // Name the first two inline: a failure the player cannot see is the exact
+                // silent failure this check exists to prevent. The rest are one click away.
+                int shown = Math.min(failed.size(), 2);
+                for (int i = 0; i < shown; i++) {
+                    SelfCheck.Probe pr = failed.get(i);
+                    Msg.warn(p, "self-check").text("inactive: ").dim(pr.name)
                             .text(pr.detail == null || pr.detail.isEmpty() ? "" : "（" + pr.detail + ")")
                             .send();
                 }
+                Msg.warn(p, "self-check").num(failed.size()).text(" check(s) failed")
+                        .link("[打开报告]", "/undying report").send();
             }
         } else if (p != null && full) {
-            Msg.ok(p, "self-check").text("all ").num(probes.size()).text(" protection checks passed").send();
+            Msg.ok(p, "self-check").text("all ").num(probes.size())
+                    .text(" protection checks passed").link("[报告]", "/undying report").send();
         }
 
         // Swallowed exceptions must surface too — the last piece of "no silent failure".
         // It appears only when something was actually swallowed; otherwise it is completely quiet.
         int swallowed = ModLog.totalSwallowed();
         if (swallowed > 0) {
-            IntegrityGuard.LOGGER.warn("[self-check] swallowed-exception record: {}", ModLog.summary());
+            String summary = ModLog.summary();
+            IntegrityGuard.LOGGER.warn("[self-check] swallowed-exception record: {}", summary);
+            ReportLog.writeBlock("[self-check] swallowed: " + summary);
             if (p != null) {
                 Msg.warn(p, "self-check").text("swallowed ").num(swallowed)
-                        .text(" internal exception(s)").dim(" (see debug.log)").send();
+                        .text(" internal exception(s)").link("[查看详情]", "/undying report").send();
             }
         }
     }
