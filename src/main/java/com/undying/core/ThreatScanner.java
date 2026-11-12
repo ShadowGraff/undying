@@ -63,6 +63,17 @@ public final class ThreatScanner {
      * would throw ConcurrentModificationException at exactly the wrong moment.
      */
     private static final List<Finding> FINDINGS = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    /**
+     * Mods that declare {@code assets/minecraft/} while no vanilla baseline was available.
+     *
+     * <p>These are not findings: a declaration is not an override, and without the vanilla
+     * list we cannot tell the two apart. Reporting them one by one produced four "worth
+     * noting" entries on a clean install — every one of them a mod that merely ships a
+     * retouched texture. They are collected here and reported as a single "could not verify"
+     * line instead.
+     */
+    private static final List<String> UNVERIFIED = new java.util.concurrent.CopyOnWriteArrayList<>();
     private static volatile boolean scanned = false;
 
     private ThreatScanner() {}
@@ -84,6 +95,7 @@ public final class ThreatScanner {
 
         try {
             long t0 = System.currentTimeMillis();
+            UNVERIFIED.clear();
             for (var info : net.minecraftforge.fml.ModList.get().getMods()) {
                 String id = info.getModId();
                 String name = info.getDisplayName();
@@ -92,6 +104,12 @@ public final class ThreatScanner {
                 if (ModConfig.THREAT_SCAN_NAME.get())      checkNamePattern(id, name);
                 if (ModConfig.THREAT_SCAN_JAR.get())       checkJar(id, name, info);
                 if (ModConfig.THREAT_SCAN_RESOURCE_OVERRIDE.get()) checkResourceOverride(id, name, info);
+            }
+            if (!UNVERIFIED.isEmpty()) {
+                add(new Finding("(scan)", "Resource overrides", "unverified",
+                        UNVERIFIED.size() + " mod(s) declare " + ResourceOverrides.PREFIX
+                                + " but no vanilla baseline was found, so none of them was "
+                                + "verified: " + String.join(", ", UNVERIFIED)));
             }
             long cost = System.currentTimeMillis() - t0;
 
@@ -243,11 +261,10 @@ public final class ThreatScanner {
 
             Set<String> vanilla = vanillaPaths();
             if (vanilla == null) {
-                // Degraded, and said so out loud: without the vanilla list we know what the
-                // jar DECLARES, not what it actually replaces. Reporting a declaration as an
-                // override would accuse mods that merely add content.
-                add(new Finding(id, name, "resource-override",
-                        ResourceOverrides.summarizeUnverified(declared)));
+                // Degraded: without the vanilla list we know what the jar DECLARES, not what
+                // it actually replaces. One entry per mod accused whoever shipped a texture;
+                // collect them and report "could not verify" once instead.
+                UNVERIFIED.add(id);
                 return;
             }
             Set<String> actual = ResourceOverrides.actualOverrides(declared, vanilla);
@@ -276,14 +293,29 @@ public final class ThreatScanner {
         if (vanillaTried) return VANILLA_PATHS;
         vanillaTried = true;
         try {
-            var src = net.minecraft.world.level.Level.class.getProtectionDomain().getCodeSource();
-            if (src == null) return null;
-            Path jar = Path.of(src.getLocation().toURI());
-            // A classes directory (development runs) is not a resource jar: treat it as
-            // "unknown" rather than as an empty vanilla, which would silently hide everything.
-            if (!Files.isRegularFile(jar)) return null;
+            Path jar = locateVanillaJar();
+            if (jar == null) {
+                LOGGER.warn("[mod-scan] vanilla jar not found; resource overrides cannot be verified");
+                return null;
+            }
 
             Set<String> found = ResourceOverrides.readDeclaredPaths(jar);
+            int fromJar = found.size();
+
+            // Sounds are not in the client jar at all — they live in assets/objects and are
+            // described by the asset index. Without it, every sound override looks like "not
+            // in vanilla", which is exactly the category horror mods replace first.
+            Path index = locateAssetIndex(jar);
+            if (index != null) {
+                try {
+                    found.addAll(ResourceOverrides.readIndexPaths(index));
+                } catch (Throwable t) {
+                    LOGGER.warn("[mod-scan] asset index unreadable ({}): {}", index, t.toString());
+                }
+            } else {
+                LOGGER.warn("[mod-scan] asset index not found; sound overrides cannot be verified");
+            }
+
             if (found.size() < VANILLA_LIST_MIN_PLAUSIBLE) {
                 // A wrong or partial jar would make every intersection empty, i.e. the whole
                 // dimension would report "nothing overridden" and look healthy. Fail loudly.
@@ -291,13 +323,103 @@ public final class ThreatScanner {
                         + "falling back to unverified declarations", found.size(), jar);
                 return null;
             }
+            LOGGER.info("[mod-scan] vanilla resource list: {} entries ({} from jar, {} total)",
+                    found.size(), fromJar, found.size());
             VANILLA_PATHS = found;
-            LOGGER.info("[mod-scan] vanilla resource list: {} entries", found.size());
+            LOGGER.info("[mod-scan] vanilla resource list: {} entries (from {})", found.size(), jar);
         } catch (Throwable t) {
             ModLog.swallowed("ThreatScanner.vanillaPaths", t);
             VANILLA_PATHS = null;
         }
         return VANILLA_PATHS;
+    }
+
+    /**
+     * Find a jar that actually contains the vanilla resources.
+     *
+     * <h3>Why the class code source is not enough</h3>
+     * The first implementation asked {@code Level.class} where it came from. In a development
+     * run that is a real jar; in a production install it is a merged, transformed module whose
+     * location is a unionfs entry — not a regular file. So the lookup returned null on every
+     * machine that matters and the whole resource-override dimension ran permanently degraded,
+     * reporting "not verified" for every mod. It said so honestly, which is why it never looked
+     * broken.
+     *
+     * <p>So the class source is tried first (development) and then the launcher layouts:
+     * a plain install puts it at {@code <game>/versions/<ver>/<ver>.jar}, and a launcher that
+     * isolates each instance (PCL, HMCL) leaves the game directory inside
+     * {@code versions/<instance>/}, putting the vanilla jar one level up.
+     */
+    private static Path locateVanillaJar() {
+        // 1) Development: the class code source really is a file.
+        try {
+            var src = net.minecraft.world.level.Level.class.getProtectionDomain().getCodeSource();
+            if (src != null) {
+                Path p = Path.of(src.getLocation().toURI());
+                if (Files.isRegularFile(p)) return p;
+            }
+        } catch (Throwable ignored) {
+            // fall through to the launcher layouts
+        }
+
+        String ver;
+        try {
+            ver = net.minecraft.SharedConstants.getCurrentVersion().getName();
+        } catch (Throwable t) {
+            return null;
+        }
+
+        Path game;
+        try {
+            game = net.minecraftforge.fml.loading.FMLPaths.GAMEDIR.get();
+        } catch (Throwable t) {
+            return null;
+        }
+
+        Path[] candidates = {
+                game.resolve("versions").resolve(ver).resolve(ver + ".jar"),   // plain install
+                game.getParent() == null ? null
+                        : game.getParent().resolve(ver).resolve(ver + ".jar"), // isolated instance
+                game.resolve(ver + ".jar"),
+        };
+        for (Path c : candidates) {
+            if (c != null && Files.isRegularFile(c)) return c;
+        }
+        return null;
+    }
+
+    /**
+     * Find the launcher's asset index, which is where vanilla sound paths live.
+     *
+     * <p>The version json next to the jar names the index id ({@code "assetIndex": {"id": "5"}}),
+     * and the file itself sits in {@code assets/indexes/}. The search walks up from the jar
+     * because launchers disagree about where the game root is: a plain install keeps assets
+     * next to {@code versions/}, an isolating launcher puts the game directory inside
+     * {@code versions/<instance>/}.
+     */
+    private static Path locateAssetIndex(Path jar) {
+        try {
+            String stem = jar.getFileName().toString().replaceAll("(?i)\\.jar$", "");
+            Path versionJson = jar.resolveSibling(stem + ".json");
+            if (!Files.isRegularFile(versionJson)) return null;
+
+            String id;
+            try (var r = Files.newBufferedReader(versionJson)) {
+                var root = com.google.gson.JsonParser.parseReader(r).getAsJsonObject();
+                var ai = root.getAsJsonObject("assetIndex");
+                if (ai == null || !ai.has("id")) return null;
+                id = ai.get("id").getAsString();
+            }
+
+            Path dir = jar.getParent();
+            for (int i = 0; i < 4 && dir != null; i++, dir = dir.getParent()) {
+                Path cand = dir.resolve("assets").resolve("indexes").resolve(id + ".json");
+                if (Files.isRegularFile(cand)) return cand;
+            }
+        } catch (Throwable t) {
+            ModLog.swallowed("ThreatScanner.locateAssetIndex", t);
+        }
+        return null;
     }
 
     // ═══════════ Results ═══════════

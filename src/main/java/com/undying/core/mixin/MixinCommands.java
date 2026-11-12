@@ -96,7 +96,7 @@ public abstract class MixinCommands {
         // must not leave behind a stamp that would excuse the next teleport in the same tick.
         try {
             TeleportGuard.noteCommand(src.getServer().getTickCount(),
-                    src.getEntity() instanceof ServerPlayer);
+                    src.getEntity() instanceof ServerPlayer, cmd);
         } catch (Throwable t) {
             ModLog.swallowed("MixinCommands.noteCommand", t);
         }

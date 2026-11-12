@@ -13,6 +13,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -127,10 +128,30 @@ class ResourceOverridesTest {
         assertTrue(ResourceOverrides.categorize(List.of()).isEmpty());
     }
 
+
     @Test
-    void degradedSummaryAdmitsTheVanillaListWasMissing() {
-        String s = ResourceOverrides.summarizeUnverified(Set.of("assets/minecraft/sounds/a.ogg"));
-        assertTrue(s.contains("not verified"), s);
-        assertTrue(s.contains("1 resource(s)"), s);
+    void assetIndexPathsComeOutInTheSameFormAsDeclaredPaths() throws Exception {
+        Path f = Files.createTempFile("undying-index", ".json");
+        Files.writeString(f, "{\"objects\":{"
+                + "\"minecraft/sounds/music/menu/menu1.ogg\":{\"hash\":\"a\"},"
+                + "\"minecraft/textures/gui/title/background/panorama_0.png\":{\"hash\":\"b\"},"
+                + "\"icons/icon_16x16.png\":{\"hash\":\"c\"}}}");
+        var paths = ResourceOverrides.readIndexPaths(f);
+
+        // Sounds are only in the index, never in the client jar: this is the whole point.
+        assertTrue(paths.contains("assets/minecraft/sounds/music/menu/menu1.ogg"));
+        assertTrue(paths.contains("assets/minecraft/textures/gui/title/background/panorama_0.png"));
+        // Namespace-less legacy keys can never match a mod's declared path; keeping them would
+        // only inflate the list.
+        assertFalse(paths.stream().anyMatch(p -> p.contains("icons/")));
+        Files.deleteIfExists(f);
+    }
+
+    @Test
+    void anIndexWithoutObjectsYieldsNothing() throws Exception {
+        Path f = Files.createTempFile("undying-index-empty", ".json");
+        Files.writeString(f, "{\"objects\":{}}");
+        assertTrue(ResourceOverrides.readIndexPaths(f).isEmpty());
+        Files.deleteIfExists(f);
     }
 }

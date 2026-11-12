@@ -56,14 +56,24 @@ public final class TeleportGuard {
      * same question with nothing to unwind. A stale stamp becomes harmless one tick later.
      */
     private static final ThreadLocal<long[]> COMMAND = ThreadLocal.withInitial(() -> new long[]{-1L, 0L});
+    /** The command text, kept only for the log line: "which command did this" is the first
+     *  question anyone asks when a teleport is intercepted, and answering it after the fact
+     *  is impossible. */
+    private static final ThreadLocal<String> COMMAND_TEXT = ThreadLocal.withInitial(() -> "");
 
     private static final ThreadLocal<Boolean> BYPASS = ThreadLocal.withInitial(() -> false);
 
     /** Called by the command hook for every command that actually runs. */
-    public static void noteCommand(long serverTick, boolean byPlayer) {
+    public static void noteCommand(long serverTick, boolean byPlayer, String commandText) {
         long[] c = COMMAND.get();
         c[0] = serverTick;
         c[1] = byPlayer ? 1L : 0L;
+        COMMAND_TEXT.set(commandText == null ? "" : commandText.trim());
+    }
+
+    /** The command text seen this tick, or an empty string. */
+    public static String currentCommandText(long serverTick) {
+        return sameTickCommand(serverTick) ? COMMAND_TEXT.get() : "";
     }
 
     private static boolean sameTickCommand(long serverTick) {
@@ -113,9 +123,13 @@ public final class TeleportGuard {
             pending.z = z;
             pending.yaw = yaw;
             pending.pitch = pitch;
-            pending.origin = insideCommand(tick)
-                    ? "命令 / command"
-                    : "其他模组 / another mod";
+            String cmd = currentCommandText(tick);
+            if (insideCommand(tick)) {
+                String shown = cmd.length() > 60 ? cmd.substring(0, 60) + "…" : cmd;
+                pending.origin = "命令 / command: " + (shown.isEmpty() ? "(unknown)" : shown);
+            } else {
+                pending.origin = "其他模组 / another mod";
+            }
             pending.id = System.nanoTime();
 
             PlayerState.of(p).pendingTeleport = pending;

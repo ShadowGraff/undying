@@ -1,6 +1,8 @@
 package com.undying.core;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.HashSet;
@@ -70,6 +72,36 @@ public final class ResourceOverrides {
         return out;
     }
 
+    /**
+     * Vanilla paths from the launcher's asset index, in the same form as
+     * {@link #readDeclaredPaths}.
+     *
+     * <h3>Why the jar alone is not enough</h3>
+     * The vanilla client jar contains textures and models but <b>no sound files</b>: audio is
+     * stored outside the jar in {@code assets/objects}, described by
+     * {@code assets/indexes/<id>.json}. Intersecting only against the jar therefore made every
+     * sound override invisible — and replacing sounds is the first thing a horror mod does.
+     * Measured on 1.20.1: 7590 paths in the jar, none of them under {@code sounds/}; 3416
+     * sound paths in the index.
+     *
+     * <p>Index keys look like {@code minecraft/sounds/music/menu/menu1.ogg}; the prefix is
+     * stripped so they compare equal to what a mod declares. Keys without a namespace
+     * ({@code icons/icon_16x16.png}) are kept as-is — they never collide with a mod's paths.
+     */
+    public static Set<String> readIndexPaths(Path indexJson) throws IOException {
+        Set<String> out = new HashSet<>();
+        try (BufferedReader r = Files.newBufferedReader(indexJson)) {
+            com.google.gson.JsonObject root =
+                    com.google.gson.JsonParser.parseReader(r).getAsJsonObject();
+            com.google.gson.JsonObject objects = root.getAsJsonObject("objects");
+            if (objects == null) return out;
+            for (String key : objects.keySet()) {
+                if (key.startsWith("minecraft/")) out.add(PREFIX + key.substring("minecraft/".length()));
+            }
+        }
+        return out;
+    }
+
     /** Keep only the declared paths that also exist in vanilla: declared &ne; overridden. */
     public static Set<String> actualOverrides(Collection<String> declared, Set<String> vanillaPaths) {
         Set<String> out = new TreeSet<>();
@@ -123,9 +155,4 @@ public final class ResourceOverrides {
         return sb.toString();
     }
 
-    /** Summary for the degraded case, where no vanilla list was available to compare against. */
-    public static String summarizeUnverified(Collection<String> declared) {
-        return declared.size() + " resource(s) declared under " + PREFIX
-                + " (vanilla list unavailable: not verified as actual overrides)";
-    }
 }

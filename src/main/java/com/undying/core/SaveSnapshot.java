@@ -166,7 +166,7 @@ public final class SaveSnapshot {
 
         boolean lowHp = p.getHealth() <= 0.0F;
         boolean dying = p.isDeadOrDying();
-        boolean gone = p.isRemoved();
+        boolean gone = p.isRemoved() && undying$destructiveRemoval(p.getRemovalReason());
         if (!(lowHp || dying || gone)) return;
 
         long now = p.server.getTickCount();
@@ -274,4 +274,29 @@ public final class SaveSnapshot {
     // throttling it to once a second only made a pointless side effect less frequent.
     // ModConfig.save() still exists for its real callers (ImmortalMode, IntegrityGuard,
     // SelfGuard), which persist an actual config change.
+
+    /**
+     * Whether being removed actually destroyed the player's state.
+     *
+     * <h3>Why "removed" alone is not enough</h3>
+     * A live test (2026-11-12) fired a full snapshot restore with
+     * {@code removalReason=CHANGED_DIMENSION}: the player walked through a portal, vanilla
+     * removed the old entity and created a new one, and this check read the removal as
+     * "the state was destroyed" — throwing the scary chat line and writing position, health
+     * and inventory back onto an entity that was mid-teardown.
+     *
+     * <p>Vanilla removes player entities for ordinary reasons too:
+     * {@code CHANGED_DIMENSION} when travelling, {@code UNLOADED_TO_CHUNK} /
+     * {@code UNLOADED_WITH_PLAYER} when leaving the area. Restoring on those is not
+     * protection, it is interference.
+     *
+     * <p>{@code KILLED} is the death path; {@code DISCARDED} is what a mod calls when it
+     * deletes an entity outright. Those two are the ones worth restoring from. This is the
+     * same distinction {@code MixinEntity} already makes when it decides which removal to
+     * block.
+     */
+    private static boolean undying$destructiveRemoval(net.minecraft.world.entity.Entity.RemovalReason reason) {
+        return reason == net.minecraft.world.entity.Entity.RemovalReason.KILLED
+                || reason == net.minecraft.world.entity.Entity.RemovalReason.DISCARDED;
+    }
 }
