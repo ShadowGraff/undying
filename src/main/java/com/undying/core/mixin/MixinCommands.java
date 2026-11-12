@@ -2,7 +2,9 @@ package com.undying.core.mixin;
 
 import com.undying.core.IntegrityGuard;
 import com.undying.core.ModConfig;
+import com.undying.core.ModLog;
 import com.undying.core.Notify;
+import com.undying.core.TeleportGuard;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.server.level.ServerPlayer;
@@ -75,20 +77,36 @@ public abstract class MixinCommands {
 
     @Inject(method = "m_230957_", at = @At("HEAD"), cancellable = true, remap = false)
     private void undying$onCommand(CommandSourceStack src, String cmd, CallbackInfoReturnable<Integer> cir) {
-        if (!ModConfig.MASTER_TOGGLE.get() || !ModConfig.KILL_BLOCKER.get()) return;
-        if (!com.undying.core.Environment.isAllowed(src.getServer())) return;   // single-player only
-        if (!undying$isKillInvocation(cmd)) return;
+        if (undying$shouldBlockKill(src, cmd)) {
+            cir.cancel();
+            cir.setReturnValue(0);
 
-        // Intercept this command
-        cir.cancel();
-        cir.setReturnValue(0);
+            // Leave a trace: this log line is also our only evidence of whether the
+            // interception worked, so it must be kept
+            IntegrityGuard.LOGGER.warn("[AntiTamper] intercepted /kill command: {}", cmd == null ? "null" : cmd.trim());
 
-        // Leave a trace: this log line is also our only evidence of whether the
-        // interception worked, so it must be kept
-        IntegrityGuard.LOGGER.warn("[AntiTamper] intercepted /kill command: {}", cmd == null ? "null" : cmd.trim());
-
-        if (src.getEntity() instanceof ServerPlayer p) {
-            Notify.killBlocked(p);
+            if (src.getEntity() instanceof ServerPlayer p) {
+                Notify.killBlocked(p);
+            }
+            return;
         }
+
+        // Tell the teleport guard that a command is running on this thread, and whether a
+        // player typed it. Only commands that actually execute are noted: a cancelled /kill
+        // must not leave behind a stamp that would excuse the next teleport in the same tick.
+        try {
+            TeleportGuard.noteCommand(src.getServer().getTickCount(),
+                    src.getEntity() instanceof ServerPlayer);
+        } catch (Throwable t) {
+            ModLog.swallowed("MixinCommands.noteCommand", t);
+        }
+    }
+
+    /** Whether this command is a lethal one that the blocker is supposed to stop. */
+    @Unique
+    private static boolean undying$shouldBlockKill(CommandSourceStack src, String cmd) {
+        if (!ModConfig.MASTER_TOGGLE.get() || !ModConfig.KILL_BLOCKER.get()) return false;
+        if (!com.undying.core.Environment.isAllowed(src.getServer())) return false;   // single-player only
+        return undying$isKillInvocation(cmd);
     }
 }

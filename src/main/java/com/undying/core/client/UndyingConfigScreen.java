@@ -69,6 +69,7 @@ public class UndyingConfigScreen extends Screen {
         add("autoRestore", ModConfig.SAVE_SNAPSHOT_RESTORE);
         add("threatScan", ModConfig.THREAT_SCAN);
         add("inventoryGuard", ModConfig.INVENTORY_GUARD);
+        add("teleportGuard", ModConfig.TELEPORT_GUARD);
         add("domain", ModConfig.DOMAIN_ENABLED);
     }
 

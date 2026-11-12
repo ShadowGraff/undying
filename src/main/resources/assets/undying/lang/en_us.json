@@ -44,5 +44,13 @@
   "undying.inventory.presses": "Y %1$s    N %2$s",
   "undying.inventory.timeout": "Ignored in %ss",
   "undying.creative.title": "Creative Inventory",
-  "undying.creative.search": "Search"
+  "undying.creative.search": "Search",
+  "undying.option.teleportGuard": "Teleport guard",
+  "undying.teleport.title": "Undying · Teleport blocked",
+  "undying.teleport.body": "Something tried to move you here:",
+  "undying.teleport.coords": "X %s   Y %s   Z %s",
+  "undying.teleport.origin": "Origin: %s",
+  "undying.teleport.frozen": "The game is paused until you answer",
+  "undying.teleport.yes": "Go there",
+  "undying.teleport.no": "Stay here"
 }

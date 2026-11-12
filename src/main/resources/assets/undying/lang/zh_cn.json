@@ -44,5 +44,13 @@
   "undying.inventory.presses": "Y %1$s    N %2$s",
   "undying.inventory.timeout": "%s 秒后自动忽略",
   "undying.creative.title": "创造物品栏",
-  "undying.creative.search": "搜索"
+  "undying.creative.search": "搜索",
+  "undying.option.teleportGuard": "传送校验",
+  "undying.teleport.title": "Undying · 传送已被拦截",
+  "undying.teleport.body": "有东西想把你传送到这里：",
+  "undying.teleport.coords": "X %s   Y %s   Z %s",
+  "undying.teleport.origin": "来源：%s",
+  "undying.teleport.frozen": "游戏已暂停，作答后继续",
+  "undying.teleport.yes": "允许传送",
+  "undying.teleport.no": "留在这里"
 }

@@ -24,6 +24,23 @@ public class ClientHooks {
     }
 
     /**
+     * Ask the client to show the teleport question.
+     *
+     * <p>Called from the network handler, which runs on the client thread already
+     * ({@code enqueueWork}), so no extra dispatch is needed.
+     *
+     * <p>If a screen is already open the question replaces it. The alternative — queueing
+     * until the player closes their inventory — would leave the server holding a teleport
+     * while the client decides it is not the right moment, and the player would be moved the
+     * instant they closed a chest without ever seeing the question.
+     */
+    public static void openTeleportAsk(String dimension, double x, double y, double z,
+                                       float yaw, float pitch, String origin) {
+        net.minecraft.client.Minecraft.getInstance().setScreen(
+                new com.undying.core.client.TeleportAskScreen(dimension, x, y, z, origin));
+    }
+
+    /**
      * Is this world currently published to LAN?
      *
      * <p>Structural test, not a guess. Vanilla's {@code IntegratedServer.publishServer}

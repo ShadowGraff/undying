@@ -57,6 +57,7 @@ public class ModConfig {
 
     // ── Inventory guard (watch for inventory changes the player did not cause) ──
     public static final ForgeConfigSpec.BooleanValue INVENTORY_GUARD;
+    public static final ForgeConfigSpec.BooleanValue TELEPORT_GUARD;
 
     static {
         ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
@@ -240,6 +241,22 @@ public class ModConfig {
                 "变动先被接受，只有玩家确认才还原。",
                 "An unanswered prompt does nothing.",
                 "不作答就等于什么都不做。")
+                .define("enabled", true);
+        b.pop();
+
+        // ── Teleport guard ──
+        b.comment("=== Teleport guard (stop and ask before an unrequested teleport) ===",
+                        "=== 传送校验（非玩家发起的传送先停下来问一句）===")
+                .push("teleportGuard");
+        TELEPORT_GUARD = b.comment(
+                "A teleport not issued by the player — a command block, a datapack function, the",
+                "console, or another mod calling teleportTo — is cancelled and turned into a",
+                "question showing the destination. The game pauses while it is unanswered.",
+                "Player-typed /tp is allowed through; ender pearls, chorus fruit and portals are",
+                "not hooked at all.",
+                "非玩家发起的传送（命令方块、数据包函数、控制台、或其他模组直接调用 teleportTo）",
+                "会被取消，并弹窗显示目的地、暂停游戏询问是否允许。",
+                "玩家自己敲的 /tp 直接放行；末影珍珠、紫颂果、传送门不在拦截范围内。")
                 .define("enabled", true);
         b.pop();
 

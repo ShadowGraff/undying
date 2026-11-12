@@ -13,7 +13,8 @@
     "MixinAntiTamperXp",
     "LivingEntityDeathTimerAccess",
     "MixinSynchedEntityDataHealth",
-    "SynchedEntityDataOwnerAccess"
+    "SynchedEntityDataOwnerAccess",
+    "MixinServerPlayerTeleport"
   ],
   "client": [
     "client.MixinTotemSoundMute",
