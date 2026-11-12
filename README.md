@@ -18,7 +18,7 @@ Everything this mod does, at a glance. Each item is detailed in its own section 
 | 健康闸门 / Health gate | 血量不会被写成 0，包括绕过 `hurt()` 的直接写入 / Health can never be written as 0, including direct writes that skip `hurt()` |
 | 隐藏槽位 / Hidden slots | 隐形图腾、360° 守护神盾、隐藏盔甲，玩家不可见不可丢 / Invisible totem, ward shield, hidden armour — unseen and undroppable |
 | 反篡改 / Anti-tamper | 拦截有害状态效果与大额经验扣除 / Blocks harmful effects and large XP drains |
-| 传送校验 / Teleport guard | 非玩家发起的传送先拦下，弹窗显示目的地并暂停游戏询问 / Unrequested teleports are held and shown as a question |
+| 传送校验 / Teleport guard | 每次传送先拦下，弹窗显示目的地与来源并暂停游戏询问 / Every teleport is held and shown as a question |
 | 出生保护 / Spawn protection | 进入世界后短暂无敌 / Brief invulnerability after entering the world |
 
 **物品与进度 / Items and progress**
@@ -426,30 +426,30 @@ safety.
 
 ## 传送校验 / Teleport guard
 
-**不是所有传送都该发生。** 有东西想把你挪走时，先拦下来，告诉你它想去哪，然后由你决定。
+**每一次传送都先问一句。** 拦下来，告诉你它想去哪、是谁发起的，然后由你决定。
 
-**Not every teleport should happen.** When something tries to move you, it is stopped first, shown to you, and left to you to decide.
+**Every teleport is asked about.** It is stopped, shown to you — where, and who asked — and left to you to decide.
 
 | 情形 / Case | 行为 / Behaviour |
 |---|---|
-| 你在聊天框敲 `/tp`（或 `/execute ... run tp`） | 直接放行，不打扰 / allowed, no prompt |
-| 命令方块、数据包函数、服务器控制台发起 | **拦下**，弹窗询问 / held, you are asked |
-| 其他模组直接调用 `teleportTo` | **拦下**，弹窗询问 / held, you are asked |
+| 你在聊天框敲 `/tp` | **也会问**，来源显示「你敲的命令」 / also asked; the origin reads "your command" |
+| 命令方块、数据包函数、服务器控制台发起 | **拦下**，来源显示命令原文 / held; the origin shows the command |
+| 其他模组直接调用 `teleportTo` | **拦下**，来源显示「其他模组」 / held; the origin reads "another mod" |
 | 你点了「允许」 | 执行原样的传送 / the teleport is performed as it was meant to be |
 
-弹窗会**暂停游戏**（单人世界），显示维度、精确坐标和来源（`命令` / `其他模组`）。按 ESC 等同于「留在这里」。
+弹窗会**暂停游戏**（单人世界），显示维度、精确坐标和来源。按 ESC 等同于「留在这里」。
 
-The prompt **pauses the game** in single-player and shows the dimension, the exact coordinates and the origin (`command` / `another mod`). ESC counts as "stay here".
+The prompt **pauses the game** in single-player and shows the dimension, the exact coordinates and the origin. ESC counts as "stay here".
 
-### 判据 / How "you asked for this" is decided
+### 为什么连自己敲的 `/tp` 也要问 / Why even your own `/tp` is asked about
 
-和 OP 拦截同一个思路：问的不是「有没有人调用了这个方法」，而是「这是不是玩家自己的动作」。具体做法是在命令入口记一个**本 tick 内有效**的标记（命令在哪个线程、是不是玩家发起的），传送发生时比对这个标记。
+早先的版本想放行玩家自己敲的 `/tp`：在命令入口记一个「本 tick 内、是否玩家发起」的标记，传送时比对。**实测里它判错了** —— 一次聊天框里敲的 `/tp` 被当成模组行为拦下，而这个标记为什么失效，看代码看不出来。
 
-The same idea as the OP check: the question is not "did something call the method" but "was this the player's own action". The command entry point records a marker valid **within the current tick** (which thread, whether a player issued it), and the teleport compares against it.
+所以判据被整个删掉了。留着一条"平时对、偶尔错"的规则，比一条枯燥但不会错的规则更危险。代价是一下按钮：**弹窗冻结游戏、显示目的地、并把命令原文回显给你**，你自己敲的东西一眼就能认出来，不存在赶时间的问题。
 
-⚠️ 这是启发式，说清楚：**模组把传送藏进一条玩家自己敲的 `/execute` 里，会被当成玩家的动作放行。** 换用栈回溯判调用者既更慢，也更容易被伪造，而且在正常命令路径上误伤更多。
+The earlier version let a player-typed `/tp` through, using a marker recorded at the command entry (valid within the same tick, carrying whether a player issued it). **It was measured to be wrong**: a `/tp` typed into chat was intercepted as if a mod had sent it, and the reason the marker failed was not visible in the code.
 
-⚠️ This is a heuristic, stated plainly: **a mod that hides its teleport inside a `/execute` the player typed is treated as the player's own action.** Inspecting the stack for the caller's class is both slower and easier to fake, and misfires on ordinary command paths.
+So the judgement is gone. A rule that is usually right and occasionally wrong is more dangerous than a boring rule that is never wrong. The cost is one button press: the prompt freezes the game, shows the destination, and echoes the command back, so your own command is recognisable at a glance.
 
 ### 做到哪一步 / Where it stops
 
@@ -459,7 +459,11 @@ Only two entry points are hooked: `ServerPlayer.teleportTo(ServerLevel, ..., Set
 
 **不拦**（写在这里，而不是等玩家掉进虚空才发现）：末影珍珠、紫颂果、下界传送门、`setPos` / `moveTo` / `changeDimension`、以及三参数 `teleportTo(x, y, z)`。前几个是原版机制，拦了等于把游戏弄坏；后几个是「模组绕过校验」的已知缺口。
 
+顺带一个实测过的结论：**重生和过传送门都不会弹窗**——`PlayerList.respawn` 是新建一个玩家实体，`changeDimension` 是移除再添加，两者都不调用被挂的那两个方法。唯一多出来的一处是旁观者「传送到实体」（`handleTeleportToEntityPacket`），那是玩家自己点的，问一次也合理。
+
 **Not covered** (written down here rather than discovered by a player who fell into the void): ender pearls, chorus fruit, nether portals, `setPos` / `moveTo` / `changeDimension`, and the three-argument `teleportTo(x, y, z)`. The first group are vanilla mechanics where interception would be felt as breakage; the second is the known gap through which a mod could bypass the check.
+
+Measured, not assumed: **respawn and portal travel never prompt** — `PlayerList.respawn` constructs a new player entity and `changeDimension` removes and re-adds, and neither calls the two hooked methods. The one extra path is the spectator "teleport to entity" packet, which the player triggers by hand.
 
 配置项：`[undying.teleportGuard] enabled`，默认开启。和本模组其它功能一样，只在单人世界生效。
 

@@ -99,8 +99,7 @@ public abstract class MixinCommands {
             if (src.getEntity() instanceof ServerPlayer player) who = "player:" + player.getGameProfile().getName();
             else if (src.getEntity() == null) who = "no-entity";
             else who = src.getEntity().getClass().getSimpleName();
-            TeleportGuard.noteCommand(src.getServer().getTickCount(),
-                    src.getEntity() instanceof ServerPlayer, cmd, who);
+            TeleportGuard.noteCommand(src.getServer().getTickCount(), cmd, who);
         } catch (Throwable t) {
             ModLog.swallowed("MixinCommands.noteCommand", t);
         }

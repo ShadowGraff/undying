@@ -6,10 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The teleport guard's two judgements.
+ * The teleport guard's decisions.
  *
- * <p>Both are pure, which is the only reason they can be tested at all: the actual interception
- * needs a live server, a player and something trying to move them.
+ * <p>Pure, which is the only reason they can be tested at all: the actual interception needs a
+ * live server, a player and something trying to move them.
  */
 class TeleportPolicyTest {
 
@@ -48,24 +48,24 @@ class TeleportPolicyTest {
     // ═══════════ "Should this teleport be stopped?" ═══════════
 
     @Test
-    void anUnrequestedTeleportIsIntercepted() {
-        assertTrue(TeleportPolicy.shouldIntercept(true, true, false, false));
-    }
-
-    @Test
-    void aPlayerTypedTeleportGoesThrough() {
-        assertFalse(TeleportPolicy.shouldIntercept(true, true, true, false));
+    void everyTeleportIsStopped() {
+        // No case is special-cased. The previous version let player-typed /tp through, and a
+        // live session showed it treating a real player command as a mod's doing. A rule with
+        // an exception that can be wrong in production is worth less than a boring rule.
+        assertTrue(TeleportPolicy.shouldIntercept(true, true, false));
     }
 
     @Test
     void theApprovedTeleportIsNotInterceptedAgain() {
         // Otherwise "yes" would re-trigger the same question and the player could never move.
-        assertFalse(TeleportPolicy.shouldIntercept(true, true, false, true));
+        assertFalse(TeleportPolicy.shouldIntercept(true, true, true));
     }
 
     @Test
     void theSwitchAndTheEnvironmentGateBothDisableIt() {
-        assertFalse(TeleportPolicy.shouldIntercept(false, true, false, false));
-        assertFalse(TeleportPolicy.shouldIntercept(true, false, false, false));
+        assertFalse(TeleportPolicy.shouldIntercept(false, true, false));
+        assertFalse(TeleportPolicy.shouldIntercept(true, false, false));
+        // The gate wins over everything: on a server, not even the bypass matters.
+        assertFalse(TeleportPolicy.shouldIntercept(false, false, false));
     }
 }

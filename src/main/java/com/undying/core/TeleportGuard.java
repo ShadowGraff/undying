@@ -7,8 +7,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 
 /**
- * Teleport guard: anything that moves the player without the player asking gets stopped and
- * turned into a question.
+ * Teleport guard: every teleport is stopped and turned into a question showing the destination.
  *
  * <h3>Why cancel first and ask second</h3>
  * There is no way to "pause" a teleport halfway: by the time the coordinates are readable the
@@ -16,9 +15,15 @@ import net.minecraft.world.level.Level;
  * the same teleport is performed later <i>if</i> the player says yes. Nothing is lost — a
  * cancelled teleport moves nobody.
  *
+ * <h3>Why there is no "the player asked for this" shortcut</h3>
+ * There used to be one, and it was measured wrong: a {@code /tp} typed into chat was
+ * intercepted as if a mod had sent it. See {@link TeleportPolicy}. Asking about everything
+ * costs a button press; guessing costs correctness, and a guard that is occasionally wrong
+ * about intent is worse than one that is boringly uniform.
+ *
  * <h3>Two thread-local flags, both unavoidable</h3>
- * {@code COMMAND_DEPTH} exists because {@code Commands.performCommand} is the only place that
- * knows a teleport came from a command, and the teleport happens deeper in the stack. The
+ * The command stamp exists because {@code Commands.performCommand} is the only place that knows
+ * a teleport came from a command, and the teleport happens deeper in the stack. The
  * {@code bypass} flag exists so the approved teleport can pass through the same guard that
  * blocked it — the alternative is a second, unguarded call path, which is how a guard grows a
  * hole.
@@ -42,7 +47,7 @@ public final class TeleportGuard {
     // ══════════════ Command context ══════════════
 
     /**
-     * The last command seen on this thread: {@code [serverTick, 1 if a player typed it]}.
+     * The tick of the last command seen on this thread, or -1.
      *
      * <h3>Why a tick stamp instead of begin/end pairing</h3>
      * The first version paired {@code commandBegin} at HEAD with {@code commandEnd} at RETURN.
@@ -54,8 +59,11 @@ public final class TeleportGuard {
      *
      * <p>A command and the teleport it causes run in the same tick, so a tick stamp answers the
      * same question with nothing to unwind. A stale stamp becomes harmless one tick later.
+     *
+     * <p>Note what this is <i>for</i> now: not for deciding anything — every teleport is asked
+     * about — but for telling the player and the log where the request came from.
      */
-    private static final ThreadLocal<long[]> COMMAND = ThreadLocal.withInitial(() -> new long[]{-1L, 0L});
+    private static final ThreadLocal<Long> COMMAND_TICK = ThreadLocal.withInitial(() -> -1L);
     /** The command text, kept only for the log line: "which command did this" is the first
      *  question anyone asks when a teleport is intercepted, and answering it after the fact
      *  is impossible. */
@@ -64,21 +72,17 @@ public final class TeleportGuard {
      * Who issued the command, in one word.
      *
      * <p>A player typing in chat produces a source with the player as its entity; a command
-     * block, a function or the console produces one without. That difference is the whole
-     * judgement, so it is recorded rather than inferred — when the guard fires on a command
-     * that looked like it came from the player, this field says whether the source actually
-     * had a player in it.
+     * block, a function or the console produces one without. This no longer decides whether to
+     * intercept — it is printed, so that "the mod teleported me without asking" and "I typed
+     * this myself" are distinguishable at a glance instead of argued about.
      */
     private static final ThreadLocal<String> COMMAND_SOURCE = ThreadLocal.withInitial(() -> "?");
 
     private static final ThreadLocal<Boolean> BYPASS = ThreadLocal.withInitial(() -> false);
 
     /** Called by the command hook for every command that actually runs. */
-    public static void noteCommand(long serverTick, boolean byPlayer, String commandText,
-                                   String sourceDescription) {
-        long[] c = COMMAND.get();
-        c[0] = serverTick;
-        c[1] = byPlayer ? 1L : 0L;
+    public static void noteCommand(long serverTick, String commandText, String sourceDescription) {
+        COMMAND_TICK.set(serverTick);
         COMMAND_TEXT.set(commandText == null ? "" : commandText.trim());
         COMMAND_SOURCE.set(sourceDescription == null ? "?" : sourceDescription);
     }
@@ -94,17 +98,11 @@ public final class TeleportGuard {
     }
 
     private static boolean sameTickCommand(long serverTick) {
-        long[] c = COMMAND.get();
-        return c[0] >= 0 && c[0] == serverTick;
+        return COMMAND_TICK.get() == serverTick;
     }
 
     public static boolean insideCommand(long serverTick) {
         return sameTickCommand(serverTick);
-    }
-
-    public static boolean commandByPlayer(long serverTick) {
-        long[] c = COMMAND.get();
-        return sameTickCommand(serverTick) && c[1] == 1L;
     }
 
     // ══════════════ Interception ══════════════
@@ -122,7 +120,6 @@ public final class TeleportGuard {
             if (!TeleportPolicy.shouldIntercept(
                     ModConfig.TELEPORT_GUARD.get(),
                     Environment.isAllowed(p),
-                    commandByPlayer(tick),
                     Boolean.TRUE.equals(BYPASS.get()))) {
                 return false;
             }
@@ -143,8 +140,19 @@ public final class TeleportGuard {
             String cmd = currentCommandText(tick);
             if (insideCommand(tick)) {
                 String shown = cmd.length() > 60 ? cmd.substring(0, 60) + "…" : cmd;
-                pending.origin = "命令 / command [" + currentCommandSource(tick) + "]: "
-                        + (shown.isEmpty() ? "(unknown)" : shown);
+                if (shown.isEmpty()) shown = "(unknown)";
+                String who = currentCommandSource(tick);
+                if (who.startsWith("player:") && TeleportPolicy.isTeleportCommand(cmd)) {
+                    // The player asked for exactly this. The question is redundant on purpose;
+                    // saying so is what keeps it from reading as an alarm.
+                    pending.origin = "你敲的命令 / your command: " + shown;
+                } else if (who.startsWith("player:")) {
+                    // A command the player ran, but not a teleport command — something else in
+                    // the chain moved them. Worth reading before answering.
+                    pending.origin = "命令连带的传送 / caused by: " + shown;
+                } else {
+                    pending.origin = "命令 [" + who + "] / command: " + shown;
+                }
             } else {
                 pending.origin = "其他模组 / another mod";
             }

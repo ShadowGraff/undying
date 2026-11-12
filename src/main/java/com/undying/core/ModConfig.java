@@ -245,18 +245,21 @@ public class ModConfig {
         b.pop();
 
         // ── Teleport guard ──
-        b.comment("=== Teleport guard (stop and ask before an unrequested teleport) ===",
-                        "=== 传送校验（非玩家发起的传送先停下来问一句）===")
+        b.comment("=== Teleport guard (stop and ask before any teleport) ===",
+                        "=== 传送校验（任何传送都先停下来问一句）===")
                 .push("teleportGuard");
         TELEPORT_GUARD = b.comment(
-                "A teleport not issued by the player — a command block, a datapack function, the",
-                "console, or another mod calling teleportTo — is cancelled and turned into a",
-                "question showing the destination. The game pauses while it is unanswered.",
-                "Player-typed /tp is allowed through; ender pearls, chorus fruit and portals are",
-                "not hooked at all.",
-                "非玩家发起的传送（命令方块、数据包函数、控制台、或其他模组直接调用 teleportTo）",
-                "会被取消，并弹窗显示目的地、暂停游戏询问是否允许。",
-                "玩家自己敲的 /tp 直接放行；末影珍珠、紫颂果、传送门不在拦截范围内。")
+                "Every teleport that moves the player to a position is cancelled and turned into",
+                "a question showing the destination. The game pauses while it is unanswered.",
+                "This includes a /tp the player typed themselves: the earlier attempt to let",
+                "those through judged a real player command to be a mod's doing, so the rule is",
+                "now uniform rather than occasionally wrong.",
+                "Not hooked: ender pearls, chorus fruit, portals and respawn — they use other",
+                "paths, so they never prompt.",
+                "任何把玩家移动到某个坐标的传送都会被取消，弹窗显示目的地并暂停游戏询问。",
+                "玩家自己敲的 /tp 也会问：早先想放行它的判据把一次真实玩家命令误判成了模组行为，",
+                "所以改成一律询问——确定无误比偶尔聪明更重要。",
+                "不在拦截范围：末影珍珠、紫颂果、传送门、重生（走的是别的路径，不会弹窗）。")
                 .define("enabled", true);
         b.pop();
 
