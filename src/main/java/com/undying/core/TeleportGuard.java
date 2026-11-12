@@ -60,15 +60,32 @@ public final class TeleportGuard {
      *  question anyone asks when a teleport is intercepted, and answering it after the fact
      *  is impossible. */
     private static final ThreadLocal<String> COMMAND_TEXT = ThreadLocal.withInitial(() -> "");
+    /**
+     * Who issued the command, in one word.
+     *
+     * <p>A player typing in chat produces a source with the player as its entity; a command
+     * block, a function or the console produces one without. That difference is the whole
+     * judgement, so it is recorded rather than inferred — when the guard fires on a command
+     * that looked like it came from the player, this field says whether the source actually
+     * had a player in it.
+     */
+    private static final ThreadLocal<String> COMMAND_SOURCE = ThreadLocal.withInitial(() -> "?");
 
     private static final ThreadLocal<Boolean> BYPASS = ThreadLocal.withInitial(() -> false);
 
     /** Called by the command hook for every command that actually runs. */
-    public static void noteCommand(long serverTick, boolean byPlayer, String commandText) {
+    public static void noteCommand(long serverTick, boolean byPlayer, String commandText,
+                                   String sourceDescription) {
         long[] c = COMMAND.get();
         c[0] = serverTick;
         c[1] = byPlayer ? 1L : 0L;
         COMMAND_TEXT.set(commandText == null ? "" : commandText.trim());
+        COMMAND_SOURCE.set(sourceDescription == null ? "?" : sourceDescription);
+    }
+
+    /** Who the command source was: a player, or something without an entity. */
+    public static String currentCommandSource(long serverTick) {
+        return sameTickCommand(serverTick) ? COMMAND_SOURCE.get() : "?";
     }
 
     /** The command text seen this tick, or an empty string. */
@@ -126,7 +143,8 @@ public final class TeleportGuard {
             String cmd = currentCommandText(tick);
             if (insideCommand(tick)) {
                 String shown = cmd.length() > 60 ? cmd.substring(0, 60) + "…" : cmd;
-                pending.origin = "命令 / command: " + (shown.isEmpty() ? "(unknown)" : shown);
+                pending.origin = "命令 / command [" + currentCommandSource(tick) + "]: "
+                        + (shown.isEmpty() ? "(unknown)" : shown);
             } else {
                 pending.origin = "其他模组 / another mod";
             }

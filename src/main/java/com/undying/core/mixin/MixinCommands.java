@@ -95,8 +95,12 @@ public abstract class MixinCommands {
         // player typed it. Only commands that actually execute are noted: a cancelled /kill
         // must not leave behind a stamp that would excuse the next teleport in the same tick.
         try {
+            String who;
+            if (src.getEntity() instanceof ServerPlayer player) who = "player:" + player.getGameProfile().getName();
+            else if (src.getEntity() == null) who = "no-entity";
+            else who = src.getEntity().getClass().getSimpleName();
             TeleportGuard.noteCommand(src.getServer().getTickCount(),
-                    src.getEntity() instanceof ServerPlayer, cmd);
+                    src.getEntity() instanceof ServerPlayer, cmd, who);
         } catch (Throwable t) {
             ModLog.swallowed("MixinCommands.noteCommand", t);
         }
