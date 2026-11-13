@@ -105,9 +105,12 @@ public class UndyingConfigScreen extends Screen {
         int bottom = this.height - 40;
         this.addRenderableWidget(Button.builder(Component.translatable("undying.config.allow_list"),
                         b -> this.minecraft.setScreen(new DomainAllowScreen(this)))
-                .bounds(this.width / 2 - 155, bottom, 150, 20).build());
+                .bounds(this.width / 2 - 155, bottom, 100, 20).build());
+        this.addRenderableWidget(Button.builder(Component.translatable("undying.config.quick"),
+                        b -> this.minecraft.setScreen(new QuickControlScreen(this)))
+                .bounds(this.width / 2 - 50, bottom, 100, 20).build());
         this.addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
-                .bounds(this.width / 2 + 5, bottom, 150, 20).build());
+                .bounds(this.width / 2 + 55, bottom, 100, 20).build());
     }
 
     private Component label(Toggle t) {

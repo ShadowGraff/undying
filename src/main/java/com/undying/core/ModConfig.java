@@ -64,6 +64,9 @@ public class ModConfig {
     //    immortality. It is a movement convenience, not a protection, so it has its own switch.
     public static final ForgeConfigSpec.BooleanValue FLIGHT;
 
+    // ── Quick controls (time / weather / game mode from the config screen) ──
+    public static final ForgeConfigSpec.BooleanValue QUICK_CONTROLS;
+
     static {
         ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
         b.push("undying");
@@ -280,6 +283,26 @@ public class ModConfig {
                 "不朽模式开启时，双击空格起飞，再双击落地。",
                 "创造模式（原版本来就能飞）与旁观者（无法影响）不处理。",
                 "飞行由原版的 abilities 封包授予，游戏里其它部分不需要知道这件事。")
+                .define("enabled", true);
+        b.pop();
+
+        // ── Quick controls ──
+        b.comment("=== Quick controls (time / weather / game mode) ===",
+                        "=== 快捷控制（时间 / 天气 / 游戏模式）===")
+                .push("quickControls");
+        QUICK_CONTROLS = b.comment(
+                "Enables the quick-control page in the config screen: set and freeze the time of",
+                "day, lock the weather, and switch game mode.",
+                "Time and weather are frozen together with being set, because a setting that",
+                "drifts back is worse than no setting. Each group has an explicit resume action.",
+                "Not behind the immortal-mode switch: wanting daylight while playing normally is",
+                "a reasonable thing to want. It is behind the single-player gate, like everything",
+                "else here.",
+                "在配置界面里开启快捷控制页：设置并冻结时间、锁定天气、切换游戏模式。",
+                "时间与天气在设定的同时被冻结——一个会自己漂回去的设置，比没有这个设置更糟。",
+                "每一组都有明确的「恢复」操作。",
+                "不受不朽模式开关限制：普通游玩时想要白天也是合理的。但和本项目其它功能一样，",
+                "只在单人世界生效。")
                 .define("enabled", true);
         b.pop();
 

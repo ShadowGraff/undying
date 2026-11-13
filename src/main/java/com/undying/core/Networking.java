@@ -48,6 +48,8 @@ public class Networking {
         CHANNEL.registerMessage(7, AcknowledgeInventoryMessage.class,
                 AcknowledgeInventoryMessage::encode, AcknowledgeInventoryMessage::decode,
                 AcknowledgeInventoryMessage::handle);
+        CHANNEL.registerMessage(8, QuickActionMessage.class,
+                QuickActionMessage::encode, QuickActionMessage::decode, QuickActionMessage::handle);
     }
 
     // ── S2C: open the creative item menu ──
@@ -324,5 +326,43 @@ public class Networking {
     /** Only called from the client thread. */
     public static void sendInventoryAcknowledge() {
         CHANNEL.sendToServer(new AcknowledgeInventoryMessage());
+    }
+
+    // ── Quick controls ──
+
+    /**
+     * C2S: one button press from the quick-control page.
+     *
+     * <p>The action is a short id rather than a value: "weather_thunder", not "set the weather
+     * to this". The server owns both the switch and the meaning, so a client that sent
+     * arbitrary numbers would only be able to ask for things the server already allows.
+     */
+    public static class QuickActionMessage {
+        private final String action;
+
+        public QuickActionMessage(String action) {
+            this.action = action;
+        }
+
+        public static void encode(QuickActionMessage m, FriendlyByteBuf b) {
+            b.writeUtf(m.action, 32);
+        }
+
+        public static QuickActionMessage decode(FriendlyByteBuf b) {
+            return new QuickActionMessage(b.readUtf(32));
+        }
+
+        public static void handle(QuickActionMessage m, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> {
+                ServerPlayer p = ctx.get().getSender();
+                if (p != null) QuickActions.apply(p, m.action);
+            });
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    /** Only called from the client thread. */
+    public static void sendQuickAction(String action) {
+        CHANNEL.sendToServer(new QuickActionMessage(action));
     }
 }

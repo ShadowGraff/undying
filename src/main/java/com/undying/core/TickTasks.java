@@ -44,6 +44,7 @@ public final class TickTasks {
         // player keeps flying with the setting visibly disabled. Once a second is enough:
         // nothing about this is time-critical, and it is a field read on the other 19 ticks.
         if (p.tickCount % Const.TICKS_PER_SECOND == 0) Flight.enforce(p);
+        QuickActions.tick(p);   // keeps a locked weather window from expiring
 
         // An execution is in progress: skip the rest of this tick's processing
         if (Execution.isRunning(pid)) {
