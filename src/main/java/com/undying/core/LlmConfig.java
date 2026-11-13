@@ -39,10 +39,21 @@ public final class LlmConfig {
         b.comment("=== Assistant (OpenAI-compatible chat) ===",
                   "=== 助手（OpenAI 兼容接口）===");
 
+        b.comment("!!! EXPERIMENTAL / 实验性功能 !!!",
+                  "This feature has NOT been fully security-reviewed. It sends the text you type,",
+                  "your coordinates, the names of nearby entities, the list of your mods, and any",
+                  "screenshot you attach, to a third-party endpoint that this mod does not control.",
+                  "The author accepts NO responsibility for any loss arising from its use, including",
+                  "but not limited to API charges, data disclosure, account issues, or damage to a",
+                  "world. Use at your own risk. Enabling it means you have read this.",
+                  "此功能尚未经过完整的安全审查。它会把你输入的文字、坐标、附近实体名称、",
+                  "已加载模组列表，以及你主动附上的截图，发送到本模组无法控制的第三方接口。",
+                  "因使用本功能造成的任何损失（包括但不限于 API 费用、数据泄露、账号问题、",
+                  "存档损坏），作者不承担任何责任。风险自负。开启即表示你已阅读本段。");
+
         ENABLED = b.comment(
-                "Off by default, and never asks. Turning this on sends your messages, your",
-                "coordinates and the names of nearby entities to the endpoint below.",
-                "默认关闭，也不会主动询问。开启后，你的消息、坐标和附近实体的名字会发送到下面的接口。")
+                "Off by default, and never asks. See the notice above before turning it on.",
+                "默认关闭，也不会主动询问。开启前请先读上面那段声明。")
                 .define("enabled", false);
 
         API_URL = b.comment(
@@ -53,7 +64,9 @@ public final class LlmConfig {
                 .define("apiUrl", "https://api.deepseek.com/v1/chat/completions");
 
         API_KEY = b.comment(
-                "Bearer token. Stored in plain text in this file, on this machine only.",
+                "Bearer token. Stored in PLAIN TEXT in this file, on this machine only.",
+                "Anyone who can read this file can spend your credit. Do not share it, do not",
+                "put it in a synced folder, and revoke it at the provider if it leaks.",
                 "This file is not synced anywhere by the mod.",
                 "Bearer 令牌。以明文存在本机这个文件里，模组不会把它同步到任何地方。")
                 .define("apiKey", "");

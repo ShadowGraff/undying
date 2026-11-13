@@ -64,6 +64,19 @@ public final class LlmCommands {
     private static void send(String text) {
         if (text == null || text.isBlank()) return;
 
+        // Said once per session, before anything is sent. Not a dialog and not a confirmation:
+        // the switch is the consent, and nagging someone who already turned it on is how a
+        // warning becomes noise. But the first message of a session should not leave without
+        // the player having been told what it carries.
+        if (!disclaimerShown) {
+            disclaimerShown = true;
+            say("§e实验性功能：本功能会把你的消息、坐标、附近实体名称、模组列表与你附上的截图"
+                    + "发送到第三方接口，安全性尚未完全验证。因使用本功能造成的任何损失，作者不承担责任。");
+            say("§eExperimental: your message, position, nearby entity names, mod list and any "
+                    + "attached screenshot go to a third-party endpoint. Not fully security-reviewed. "
+                    + "Use at your own risk; the author accepts no liability for any loss.");
+        }
+
         String warn = LlmClient.usageWarning();
         if (warn != null) say(warn);
 
@@ -143,4 +156,5 @@ public final class LlmCommands {
     }
 
     private static boolean warned;
+    private static boolean disclaimerShown;
 }
