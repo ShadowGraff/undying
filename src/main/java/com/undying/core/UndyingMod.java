@@ -55,6 +55,9 @@ public class UndyingMod {
 
     public UndyingMod() {
         ModLoadingContext.get().registerConfig(Type.COMMON, ModConfig.SPEC);
+        // CLIENT, not COMMON: this one holds an API key and must never be loaded on, or synced
+        // to, a server.
+        ModLoadingContext.get().registerConfig(Type.CLIENT, LlmConfig.SPEC);
 
         // One instance wired to two buses: the Forge event bus + the mod event bus
         ModEvents events = new ModEvents();
