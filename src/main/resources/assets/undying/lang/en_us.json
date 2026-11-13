@@ -53,5 +53,19 @@
   "undying.teleport.frozen": "The game is paused until you answer",
   "undying.teleport.yes": "Go there",
   "undying.teleport.no": "Stay here",
-  "undying.option.flight": "Flight (double-tap jump)"
+  "undying.option.flight": "Flight (double-tap jump)",
+  "key.undying.preview_inventory": "Hold: preview inventory changes",
+  "undying.preview.title": "Inventory changes",
+  "undying.preview.pending": "Pending rollback — this is what rolling back would undo",
+  "undying.preview.since_last": "Changes since you last looked",
+  "undying.preview.no_baseline": "No baseline yet — try again a few seconds after joining",
+  "undying.preview.empty": "No changes detected",
+  "undying.preview.hint": "Scroll to page · ESC to close",
+  "undying.preview.empty_slot": "(empty)",
+  "undying.preview.slot_hotbar": "Hotbar %s",
+  "undying.preview.slot_main": "Backpack %s",
+  "undying.preview.slot_armor": "Armour %s",
+  "undying.preview.slot_offhand": "Offhand",
+  "undying.preview.slot_unknown": "Slot %s",
+  "undying.preview.holding": "Release to cancel · %s s left"
 }

@@ -46,12 +46,38 @@ public final class InventoryGuard {
         public int lastDropTick = Integer.MIN_VALUE / 2;
         public int lastPickupTick = Integer.MIN_VALUE / 2;
 
+        /**
+         * What the player has already looked at.
+         *
+         * <h3>Why this is not the same as {@link #lastSlots}</h3>
+         * The guard's baseline advances on <b>every</b> tick that shows a change, because
+         * otherwise the same difference would be reported forever. That makes it useless for a
+         * preview: comparing against it answers "what changed since 50 ms ago", which is almost
+         * always nothing.
+         *
+         * <p>This baseline advances only when the player says "I have seen this" — so a hold on
+         * the preview key answers the question a player actually asks: <i>what has changed since
+         * I last looked?</i>
+         */
+        public int[] acknowledgedSlots;
+        public ItemStack[] acknowledgedStacks;
+
         /** Non-zero while a question is pending. Volatile: the client HUD reads it. */
         public volatile long askId;
         /** Contents to restore if the player confirms. */
         public ItemStack[] rollbackTo;
         /** Server tick at which the question expires. */
         public int askExpiresTick;
+    }
+
+    /** One preview: what to show, and against which baseline it was produced. */
+    public static final class Preview {
+        /** True when a rollback question is open, so the rows describe that change. */
+        public boolean pending;
+        /** False before the first tick has ever seen this player's inventory. */
+        public boolean hasBaseline;
+        /** Rows of {@code {slotIndex, before, after}}. */
+        public java.util.List<String[]> rows = new java.util.ArrayList<>();
     }
 
     private static State state(ServerPlayer p) {
@@ -92,6 +118,8 @@ public final class InventoryGuard {
             if (s.lastSlots == null) {
                 s.lastSlots = now;
                 s.lastStacks = copy(inv);
+                s.acknowledgedSlots = now;
+                s.acknowledgedStacks = copy(inv);
                 return;
             }
 
@@ -117,10 +145,12 @@ public final class InventoryGuard {
                     // internal exception(s)" every time the guard does its job — a false alarm
                     // that trains the player to ignore the one counter that must stay at zero.
                     IntegrityGuard.LOGGER.warn(
-                            "[inventory] {} slot(s) changed with no cause ({})",
-                            changed, p.getName().getString());
+                            "[inventory] {} slot(s) changed with no cause ({}) slots={}",
+                            changed, p.getName().getString(),
+                            InventoryDiff.differingSlots(now, s.lastSlots));
                     ReportLog.writeBlock("[inventory] " + p.getName().getString()
-                            + ": " + changed + " slot(s) changed at tick " + p.tickCount);
+                            + ": " + changed + " slot(s) changed at tick " + p.tickCount
+                            + " slots=" + InventoryDiff.differingSlots(now, s.lastSlots));
                 }
                 // Baseline advances either way; otherwise the same difference would be
                 // reported every tick until the player answered.
@@ -184,9 +214,81 @@ public final class InventoryGuard {
         return s.askId;
     }
 
+    // ═══════════ Preview ═══════════
+
+    /**
+     * The change list shown when the player holds the preview key.
+     *
+     * <p>Two baselines, because there are two questions:
+     * <ul>
+     *   <li>a rollback question is open — show what confirming would undo, so the player is
+     *       deciding on facts rather than on the word "rollback";</li>
+     *   <li>no question — show what has changed since the player last looked, which is the
+     *       question this key exists to answer.</li>
+     * </ul>
+     *
+     * <p>Comparison uses {@link ItemStack#matches}, not the slot fingerprints: the fingerprint
+     * exists to answer "how many slots differ" cheaply every tick, and a preview that reported
+     * a slot as changed without being able to say how would be worse than no preview.
+     */
+    public static Preview buildPreview(ServerPlayer p) {
+        Preview out = new Preview();
+        if (p == null) return out;
+
+        State s = state(p);
+        Inventory inv = p.getInventory();
+
+        ItemStack[] base;
+        if (s.askId != 0 && s.rollbackTo != null) {
+            out.pending = true;
+            base = s.rollbackTo;
+        } else if (s.acknowledgedStacks != null) {
+            base = s.acknowledgedStacks;
+        } else {
+            return out;   // never ticked yet: no baseline, and inventing one would lie
+        }
+        out.hasBaseline = true;
+
+        int size = inv.getContainerSize();
+        int baseLen = base == null ? 0 : base.length;
+        int slots = Math.max(size, baseLen);
+        for (int i = 0; i < slots; i++) {
+            ItemStack now = i < size ? inv.getItem(i) : ItemStack.EMPTY;
+            ItemStack was = i < baseLen && base[i] != null ? base[i] : ItemStack.EMPTY;
+            if (ItemStack.matches(was, now)) continue;
+            out.rows.add(new String[]{String.valueOf(i), describe(was), describe(now)});
+        }
+        return out;
+    }
+
+    /**
+     * Mark everything currently held as seen.
+     *
+     * <p>Called when the preview closes. Without this the next preview would repeat the same
+     * changes forever, and a report that never empties stops being read.
+     */
+    public static void acknowledge(ServerPlayer p) {
+        if (p == null) return;
+        try {
+            State s = state(p);
+            s.acknowledgedSlots = fingerprint(p.getInventory());
+            s.acknowledgedStacks = copy(p.getInventory());
+        } catch (Throwable t) {
+            ModLog.swallowed("InventoryGuard.acknowledge", t);
+        }
+    }
+
+    /** Empty string means "nothing in this slot"; the client renders it in its own language. */
+    private static String describe(ItemStack st) {
+        if (st == null || st.isEmpty()) return "";
+        String name = st.getHoverName().getString();
+        return st.getCount() > 1 ? name + " x" + st.getCount() : name;
+    }
+
     // ═══════════ Fingerprint ═══════════
 
-    private static int[] fingerprint(Inventory inv) {        int size = inv.getContainerSize();
+    private static int[] fingerprint(Inventory inv) {
+        int size = inv.getContainerSize();
         int[] out = new int[size];
         for (int i = 0; i < size; i++) {
             ItemStack stack = inv.getItem(i);

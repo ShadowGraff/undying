@@ -53,5 +53,19 @@
   "undying.teleport.frozen": "游戏已暂停，作答后继续",
   "undying.teleport.yes": "允许传送",
   "undying.teleport.no": "留在这里",
-  "undying.option.flight": "飞行（双击空格）"
+  "undying.option.flight": "飞行（双击空格）",
+  "key.undying.preview_inventory": "长按：查看物品栏变化",
+  "undying.preview.title": "物品栏变化",
+  "undying.preview.pending": "待确认的回滚 —— 这些是「回滚」会还原掉的变化",
+  "undying.preview.since_last": "自你上次查看以来的变化",
+  "undying.preview.no_baseline": "还没有建立基线，进世界几秒后再试",
+  "undying.preview.empty": "没有检测到变化",
+  "undying.preview.hint": "滚轮翻页 · ESC 关闭",
+  "undying.preview.empty_slot": "（空）",
+  "undying.preview.slot_hotbar": "快捷栏 %s",
+  "undying.preview.slot_main": "背包 %s",
+  "undying.preview.slot_armor": "护甲 %s",
+  "undying.preview.slot_offhand": "副手",
+  "undying.preview.slot_unknown": "槽位 %s",
+  "undying.preview.holding": "松手取消 · 还需 %s 秒"
 }

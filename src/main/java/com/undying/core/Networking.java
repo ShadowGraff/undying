@@ -39,6 +39,15 @@ public class Networking {
                 TeleportAnswerMessage::encode, TeleportAnswerMessage::decode, TeleportAnswerMessage::handle);
         CHANNEL.registerMessage(4, ToggleFlyMessage.class,
                 ToggleFlyMessage::encode, ToggleFlyMessage::decode, ToggleFlyMessage::handle);
+        CHANNEL.registerMessage(5, RequestInventoryPreviewMessage.class,
+                RequestInventoryPreviewMessage::encode, RequestInventoryPreviewMessage::decode,
+                RequestInventoryPreviewMessage::handle);
+        CHANNEL.registerMessage(6, InventoryPreviewMessage.class,
+                InventoryPreviewMessage::encode, InventoryPreviewMessage::decode,
+                InventoryPreviewMessage::handle);
+        CHANNEL.registerMessage(7, AcknowledgeInventoryMessage.class,
+                AcknowledgeInventoryMessage::encode, AcknowledgeInventoryMessage::decode,
+                AcknowledgeInventoryMessage::handle);
     }
 
     // ── S2C: open the creative item menu ──
@@ -218,5 +227,102 @@ public class Networking {
     /** Only called from the client thread. */
     public static void sendToggleFly() {
         CHANNEL.sendToServer(new ToggleFlyMessage());
+    }
+
+    // ── Inventory preview ──
+    //
+    // Sent in three parts rather than one, because the answer is produced on the server: the
+    // client cannot compute the difference itself, since the baseline lives in the guard's
+    // per-player state and the client is not allowed to be the authority on what changed.
+
+    /** C2S: the player held the preview key; compute the change list. */
+    public static class RequestInventoryPreviewMessage {
+        public static void encode(RequestInventoryPreviewMessage m, FriendlyByteBuf b) {}
+        public static RequestInventoryPreviewMessage decode(FriendlyByteBuf b) {
+            return new RequestInventoryPreviewMessage();
+        }
+
+        public static void handle(RequestInventoryPreviewMessage m, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> {
+                ServerPlayer p = ctx.get().getSender();
+                if (p == null) return;
+                InventoryGuard.Preview preview = InventoryGuard.buildPreview(p);
+                CHANNEL.send(PacketDistributor.PLAYER.with(() -> p),
+                        new InventoryPreviewMessage(preview.pending, preview.hasBaseline, preview.rows));
+            });
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    /** S2C: here is what changed. */
+    public static class InventoryPreviewMessage {
+        private final boolean pending;
+        private final boolean hasBaseline;
+        private final java.util.List<String[]> rows;
+
+        public InventoryPreviewMessage(boolean pending, boolean hasBaseline,
+                                       java.util.List<String[]> rows) {
+            this.pending = pending;
+            this.hasBaseline = hasBaseline;
+            this.rows = rows;
+        }
+
+        public static void encode(InventoryPreviewMessage m, FriendlyByteBuf b) {
+            b.writeBoolean(m.pending);
+            b.writeBoolean(m.hasBaseline);
+            b.writeVarInt(m.rows.size());
+            for (String[] r : m.rows) {
+                b.writeVarInt(Integer.parseInt(r[0]));
+                b.writeUtf(r[1], 96);
+                b.writeUtf(r[2], 96);
+            }
+        }
+
+        public static InventoryPreviewMessage decode(FriendlyByteBuf b) {
+            boolean pending = b.readBoolean();
+            boolean hasBaseline = b.readBoolean();
+            int n = b.readVarInt();
+            java.util.List<String[]> rows = new java.util.ArrayList<>(n);
+            for (int i = 0; i < n; i++) {
+                rows.add(new String[]{String.valueOf(b.readVarInt()), b.readUtf(96), b.readUtf(96)});
+            }
+            return new InventoryPreviewMessage(pending, hasBaseline, rows);
+        }
+
+        public static void handle(InventoryPreviewMessage m, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> {
+                if (ctx.get().getDirection().getReceptionSide().isClient()) {
+                    DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                            () -> () -> ClientHooks.openInventoryPreview(m.pending, m.hasBaseline, m.rows));
+                }
+            });
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    /** C2S: the player closed the preview, so everything shown counts as seen. */
+    public static class AcknowledgeInventoryMessage {
+        public static void encode(AcknowledgeInventoryMessage m, FriendlyByteBuf b) {}
+        public static AcknowledgeInventoryMessage decode(FriendlyByteBuf b) {
+            return new AcknowledgeInventoryMessage();
+        }
+
+        public static void handle(AcknowledgeInventoryMessage m, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> {
+                ServerPlayer p = ctx.get().getSender();
+                if (p != null) InventoryGuard.acknowledge(p);
+            });
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    /** Only called from the client thread. */
+    public static void sendInventoryPreviewRequest() {
+        CHANNEL.sendToServer(new RequestInventoryPreviewMessage());
+    }
+
+    /** Only called from the client thread. */
+    public static void sendInventoryAcknowledge() {
+        CHANNEL.sendToServer(new AcknowledgeInventoryMessage());
     }
 }

@@ -2,6 +2,8 @@ package com.undying.core;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -69,5 +71,36 @@ class InventoryDiffTest {
     void theThresholdMatchesTheDocumentedNumber() {
         // The javadoc and the README both say five; this fails if one is edited alone.
         assertEquals(5, InventoryDiff.SUSPICIOUS_SLOTS);
+    }
+
+    // ═══════════ Which slots, for the preview ═══════════
+
+    @Test
+    void differingSlotsListsOnlyTheChangedIndices() {
+        List<Integer> slots = InventoryDiff.differingSlots(
+                new int[]{1, 2, 3, 4, 5},
+                new int[]{1, 0, 3, 0, 5});
+        assertEquals(List.of(1, 3), slots);
+    }
+
+    @Test
+    void differingSlotsCountsExtraSlotsWhenTheInventoryGrew() {
+        // A modded inventory can grow. The new slots are exactly what a player wants to see in
+        // a preview, so they are reported rather than ignored as "not comparable".
+        List<Integer> slots = InventoryDiff.differingSlots(
+                new int[]{1, 2},
+                new int[]{1, 2, 3, 4});
+        assertEquals(List.of(2, 3), slots);
+    }
+
+    @Test
+    void differingSlotsIsEmptyWithoutABaseline() {
+        assertTrue(InventoryDiff.differingSlots(null, new int[]{1}).isEmpty());
+        assertTrue(InventoryDiff.differingSlots(new int[]{1}, null).isEmpty());
+    }
+
+    @Test
+    void identicalFingerprintsProduceNoRows() {
+        assertTrue(InventoryDiff.differingSlots(new int[]{1, 2, 3}, new int[]{1, 2, 3}).isEmpty());
     }
 }

@@ -38,10 +38,23 @@ public final class ConfigKeyBinds {
             GLFW.GLFW_KEY_O,
             "key.categories.undying");
 
+    /**
+     * Hold to preview what the inventory guard has seen change.
+     *
+     * <p>Deliberately a hold rather than a tap: this freezes the game, and a single key could be
+     * hit by accident while typing. Three seconds is long enough that it is always intended.
+     */
+    public static final KeyMapping PREVIEW_INVENTORY = new KeyMapping(
+            "key.undying.preview_inventory",
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_I,
+            "key.categories.undying");
+
     @SubscribeEvent
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
         try {
             event.register(OPEN_CONFIG);
+            event.register(PREVIEW_INVENTORY);
         } catch (Throwable t) {
             ModLog.swallowed("ConfigKeyBinds.register", t);
         }

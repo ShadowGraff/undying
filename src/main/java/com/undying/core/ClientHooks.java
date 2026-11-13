@@ -40,6 +40,13 @@ public class ClientHooks {
                 new com.undying.core.client.TeleportAskScreen(dimension, x, y, z, origin));
     }
 
+    /** Ask the client to show the inventory change preview. */
+    public static void openInventoryPreview(boolean pending, boolean hasBaseline,
+                                            java.util.List<String[]> rows) {
+        net.minecraft.client.Minecraft.getInstance().setScreen(
+                new com.undying.core.client.InventoryPreviewScreen(pending, hasBaseline, rows));
+    }
+
     /**
      * Is this world currently published to LAN?
      *
