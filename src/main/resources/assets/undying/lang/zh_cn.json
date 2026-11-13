@@ -111,5 +111,8 @@
   "undying.glow.off_state": "关",
   "undying.glow.off": "关闭透视",
   "undying.glow.note": "持续 = 直到手动关闭 · 目标选自定义时请在配置文件里填写名单",
+  "undying.glow.shader_note": "光影包可能吞掉发光轮廓：看不见时把「碰撞箱」打开，那是本模组自己画的",
+  "undying.glow.status_on": "已开启（再次选时长会重新计时）",
+  "undying.glow.status_off": "未开启（点上面任意时长即可开始）",
   "undying.option.glow": "透视（发光轮廓）"
 }

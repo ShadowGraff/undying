@@ -86,7 +86,80 @@ public final class SnapshotStore {
         if (f == null) return false;
         File dir = f.getParentFile();
         if (dir != null && !dir.exists() && !dir.mkdirs()) return false;
+        writeTo(f, tag);
+        return true;
+    }
 
+    // ════════════════════════════════════════════════════════════
+    //  Asynchronous write
+    // ════════════════════════════════════════════════════════════
+
+    /**
+     * Single background writer.
+     *
+     * <p>One thread, not a pool: writes for the same player must not interleave (they rename
+     * into the same path), and one thread is already far more than the required throughput of
+     * one snapshot every five seconds.
+     */
+    private static final java.util.concurrent.ExecutorService WRITER =
+            java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+                Thread t = new Thread(r, "undying-snapshot-writer");
+                t.setDaemon(true);
+                t.setPriority(Thread.MIN_PRIORITY);
+                return t;
+            });
+
+    /** Writes waiting or running. Bounded so a stalled disk cannot grow an unbounded queue. */
+    private static final java.util.concurrent.atomic.AtomicInteger QUEUED =
+            new java.util.concurrent.atomic.AtomicInteger();
+
+    private static final int MAX_QUEUED = 4;
+
+    /**
+     * Queue a snapshot write and return immediately.
+     *
+     * <h3>Why this is not done on the tick thread any more</h3>
+     * Compressed NBT plus the rename-to-backup step is file system work, and it used to run
+     * inside the server tick every five seconds. The mod's own tick timer recorded ~15 ms
+     * peaks, which is a third of the tick budget for something with no deadline: a snapshot
+     * that lands 10 ms later is worth exactly the same.
+     *
+     * <p>The path is resolved on the calling thread on purpose — it asks the server for its
+     * world directory, and that is not something a background thread should touch while the
+     * server is shutting down.
+     *
+     * @return true when the write was accepted (the caller may then update its fingerprint);
+     *         false when the path is unusable or the queue is saturated — the next interval
+     *         will try again
+     */
+    public static boolean saveAsync(ServerPlayer p, CompoundTag tag) throws IOException {
+        File f = fileFor(p, false);
+        if (f == null) return false;
+        File dir = f.getParentFile();
+        if (dir != null && !dir.exists() && !dir.mkdirs()) return false;
+
+        if (QUEUED.get() >= MAX_QUEUED) return false;
+        QUEUED.incrementAndGet();
+        try {
+            WRITER.execute(() -> {
+                try {
+                    writeTo(f, tag);
+                } catch (Throwable t) {
+                    ModLog.swallowed("SnapshotStore.writeAsync", t);
+                    IntegrityGuard.LOGGER.warn("[snapshot] background write failed: {}", t.toString());
+                } finally {
+                    QUEUED.decrementAndGet();
+                }
+            });
+        } catch (Throwable t) {
+            QUEUED.decrementAndGet();
+            throw t;
+        }
+        return true;
+    }
+
+    /** The actual file work, shared by the sync and async paths. */
+    private static void writeTo(File f, CompoundTag tag) throws IOException {
         // Write-then-rename, never write in place.
         // A crash inside writeCompressed used to truncate the ONLY copy on disk, and
         // restore() then had nothing valid left to read: the file that was supposed to
@@ -102,7 +175,6 @@ public final class SnapshotStore {
             move(f, bak);   // the previous snapshot becomes the fallback copy
         }
         move(tmp, f);
-        return true;
     }
 
     /** Rename within the snapshot directory, atomically where the filesystem allows it. */

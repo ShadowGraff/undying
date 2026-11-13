@@ -111,5 +111,8 @@
   "undying.glow.off_state": "off",
   "undying.glow.off": "Turn off",
   "undying.glow.note": "Until-off lasts until you turn it off · pick Custom and edit the config for a list",
+  "undying.glow.shader_note": "A shader pack can swallow the outline: if nothing shows, turn on Hitboxes - those are drawn by this mod",
+  "undying.glow.status_on": "On (picking a duration again restarts the timer)",
+  "undying.glow.status_off": "Off (click any duration above to start)",
   "undying.option.glow": "Outline (glow)"
 }

@@ -39,6 +39,13 @@ public final class Flight {
             PlayerState st = PlayerState.of(p);
             Abilities a = p.getAbilities();
 
+            // One double-tap, one toggle. The client detects the tap, but nothing guarantees it
+            // is the only thing that noticed: a second packet in the same 200 ms would take the
+            // player straight back up after they asked to land, which is exactly the "cannot
+            // cancel flight" report this guard exists to rule out.
+            if (st.flightLastToggleTick != 0 && p.tickCount - st.flightLastToggleTick < 4) return;
+            st.flightLastToggleTick = p.tickCount;
+
             // "Landing" only applies to flight this mod granted. If the player is airborne
             // because of someone else's gear, the first double-tap takes over instead of
             // dropping them out of the sky.
@@ -49,7 +56,11 @@ public final class Flight {
                 st.flightOwned = false;
                 a.mayfly = st.flightMayflyBefore;   // hand it back as we found it
             } else {
-                st.flightMayflyBefore = a.mayfly;
+                // Only record the original value when we are the ones granting. Overwriting it
+                // on a second take-off would store our own mayfly=true, and the eventual
+                // revoke would then hand back a permission that was never there — flight that
+                // survives its own switch being turned off.
+                if (!st.flightOwned) st.flightMayflyBefore = a.mayfly;
                 a.mayfly = true;
                 a.flying = true;
                 st.flightOwned = true;

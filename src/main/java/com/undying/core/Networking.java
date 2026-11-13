@@ -54,6 +54,9 @@ public class Networking {
                 CommandAuditMessage::encode, CommandAuditMessage::decode, CommandAuditMessage::handle);
         CHANNEL.registerMessage(10, GlowMessage.class,
                 GlowMessage::encode, GlowMessage::decode, GlowMessage::handle);
+        CHANNEL.registerMessage(11, ConfigToggledMessage.class,
+                ConfigToggledMessage::encode, ConfigToggledMessage::decode,
+                ConfigToggledMessage::handle);
     }
 
     // ── S2C: open the creative item menu ──
@@ -441,5 +444,41 @@ public class Networking {
     /** Only called from the client thread. */
     public static void sendGlow(int seconds) {
         CHANNEL.sendToServer(new GlowMessage(seconds));
+    }
+
+    // ── Config screen: "that switch was me" ──
+
+    /**
+     * C2S, no payload: the player flipped a switch in this mod's own config screen.
+     *
+     * <h3>Why this is needed at all</h3>
+     * {@code IntegrityGuard} compares the live config against a snapshot taken when the player
+     * joined, and turns a switch back on if something external flipped it off. That is the
+     * point of a tamper guard — but the config screen is not "something external". Without this
+     * message, turning a protected child switch off in the screen while immortal mode was on
+     * was undone two seconds later, and the player could not turn it off at all.
+     *
+     * <p>Sending one packet when they click is cheaper and more honest than teaching the guard
+     * to guess which changes were legitimate.
+     */
+    public static class ConfigToggledMessage {
+        public static void encode(ConfigToggledMessage m, FriendlyByteBuf b) {}
+
+        public static ConfigToggledMessage decode(FriendlyByteBuf b) {
+            return new ConfigToggledMessage();
+        }
+
+        public static void handle(ConfigToggledMessage m, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> {
+                ServerPlayer p = ctx.get().getSender();
+                if (p != null) IntegrityGuard.onPlayerToggled(p);
+            });
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    /** Only called from the client thread. */
+    public static void sendConfigToggled() {
+        CHANNEL.sendToServer(new ConfigToggledMessage());
     }
 }

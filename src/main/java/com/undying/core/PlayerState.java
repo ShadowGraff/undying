@@ -176,6 +176,9 @@ public final class PlayerState {
     /** {@code mayfly} as it was before we granted it, so landing can put it back. */
     public boolean flightMayflyBefore;
 
+    /** Tick of the last accepted toggle; used to collapse a duplicate double-tap into one. */
+    public int flightLastToggleTick;
+
     // ══════════════ Glow ══════════════
 
     /** Whether the outline feature is currently on for this player. */

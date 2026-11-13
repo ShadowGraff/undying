@@ -79,7 +79,9 @@ public final class SaveSnapshot {
             //    5 seconds just to compute a hash — a classic case of "burning CPU to
             //    save IO", slower the bigger the inventory, and it runs on the main thread.
             CompoundTag tag = SnapshotCodec.encode(p);
-            if (SnapshotStore.save(p, tag)) {
+            // Disk work goes to the background writer: it has no deadline, and doing it inside
+            // the tick cost ~15 ms peaks every five seconds (measured by TickBudget).
+            if (SnapshotStore.saveAsync(p, tag)) {
                 state.snapshotHash = hash;
             }
         } catch (Throwable t) {

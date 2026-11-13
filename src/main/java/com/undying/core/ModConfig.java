@@ -77,6 +77,7 @@ public class ModConfig {
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> GLOW_CATEGORIES;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> GLOW_ENTITIES;
     public static final ForgeConfigSpec.BooleanValue GLOW_HITBOX;
+    public static final ForgeConfigSpec.IntValue GLOW_MAX;
 
     static {
         ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
@@ -372,8 +373,19 @@ public class ModConfig {
                 .defineList("entities", new ArrayList<>(), o -> o instanceof String);
         GLOW_HITBOX = b.comment(
                 "Draw the collision box of every glowing creature. Client-side only.",
-                "画出每个发光生物的碰撞箱。仅客户端。")
+                "This is also the fallback when a shader pack swallows the vanilla outline.",
+                "画出每个发光生物的碰撞箱。仅客户端。",
+                "光影包吞掉原版发光轮廓时，这是唯一还看得见的通道。")
                 .define("showHitbox", false);
+        GLOW_MAX = b.comment(
+                "Upper bound on how many creatures are marked, nearest first.",
+                "Every marked creature costs an extra render pass on the client, so the cost",
+                "grows with the number of creatures, not with the radius. This caps it.",
+                "Raise it only if you want the far ones too and can afford the frames.",
+                "同时标记的生物数量上限，按距离从近到远取。",
+                "每个被标记的生物都会让客户端多渲染一遍，开销随「数量」涨，不随半径涨。",
+                "这里就是那道闸。除非你确实想连远处的都看见、并且不在乎帧数，否则别调大。")
+                .defineInRange("maxTargets", 32, 1, 400);
         b.pop();
 
         b.pop();

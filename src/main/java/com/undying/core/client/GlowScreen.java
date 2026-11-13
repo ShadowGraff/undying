@@ -94,10 +94,11 @@ public class GlowScreen extends Screen {
     }
 
     private int target(int x, int y, String key, String value) {
-        this.addRenderableWidget(Button.builder(Component.translatable("undying." + key), b -> {
+        this.addRenderableWidget(Button.builder(marked("undying." + key, isCurrentTarget(value)), b -> {
             try {
                 ModConfig.GLOW_TARGET.set(value);
                 ModConfig.save();
+                this.rebuildWidgets();   // so the marker moves to the new choice
             } catch (Throwable t) {
                 ModLog.swallowed("GlowScreen.target", t);
             }
@@ -105,23 +106,67 @@ public class GlowScreen extends Screen {
         return x + BTN_W + GAP;
     }
 
+    private boolean isCurrentTarget(String value) {
+        try {
+            return value.equalsIgnoreCase(String.valueOf(ModConfig.GLOW_TARGET.get()));
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    /**
+     * Duration buttons also switch the feature on.
+     *
+     * <h3>Why this was a bug</h3>
+     * The switch lives on the parent page, the duration lives here. Pressing "30 s" while the
+     * switch was off sent the request, the server saw {@code GLOW == false} and returned
+     * silently — no outline, no message, nothing. From the player's side that is "the feature
+     * does not work", and there was no way to tell it apart from a real failure. A control that
+     * does nothing must say so or turn on what it needs; this one turns it on.
+     */
     private int duration(int x, int y, String key, int seconds) {
         this.addRenderableWidget(Button.builder(Component.translatable("undying." + key),
-                        b -> Networking.sendGlow(seconds))
+                        b -> {
+                            try {
+                                if (!ModConfig.GLOW.get()) {
+                                    ModConfig.GLOW.set(true);
+                                    ModConfig.save();
+                                }
+                            } catch (Throwable t) {
+                                ModLog.swallowed("GlowScreen.duration.enable", t);
+                            }
+                            Networking.sendGlow(seconds);
+                            this.rebuildWidgets();
+                        })
                 .bounds(x, y, BTN_W, ROW_H).build());
         return x + BTN_W + GAP;
     }
 
     private int range(int x, int y, String key, int blocks) {
-        this.addRenderableWidget(Button.builder(Component.translatable("undying." + key), b -> {
+        this.addRenderableWidget(Button.builder(marked("undying." + key, isCurrentRange(blocks)), b -> {
             try {
                 ModConfig.GLOW_RANGE.set(blocks);
                 ModConfig.save();
+                this.rebuildWidgets();
             } catch (Throwable t) {
                 ModLog.swallowed("GlowScreen.range", t);
             }
         }).bounds(x, y, BTN_W, ROW_H).build());
         return x + BTN_W + GAP;
+    }
+
+    private boolean isCurrentRange(int blocks) {
+        try {
+            return ModConfig.GLOW_RANGE.get() == blocks;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    /** Prepends a dot to the selected option, so the page shows its own state. */
+    private Component marked(String key, boolean active) {
+        Component label = Component.translatable(key);
+        return active ? Component.literal("▶ ").append(label) : Component.literal("   ").append(label);
     }
 
     @Override
@@ -140,9 +185,42 @@ public class GlowScreen extends Screen {
                 cx - 150, y + 80, 0xA0C0FF);
 
         g.drawCenteredString(this.font, Component.translatable("undying.glow.note"),
-                cx, this.height - 52, 0x909090);
+                cx, this.height - 66, 0x909090);
+        // A shader mod rewrites the outline pipeline this feature depends on. Say so in the
+        // warning colour when one is loaded, instead of letting the player conclude the
+        // feature is broken. The hitbox renderer is ours and works either way.
+        g.drawCenteredString(this.font, Component.translatable("undying.glow.shader_note"),
+                cx, this.height - 54, shadersLoaded() ? 0xE0B050 : 0x909090);
+
+        boolean on;
+        try {
+            on = ModConfig.GLOW.get();
+        } catch (Throwable t) {
+            on = false;
+        }
+        g.drawCenteredString(this.font,
+                Component.translatable(on ? "undying.glow.status_on" : "undying.glow.status_off"),
+                cx, this.height - 78, on ? 0x7FD87F : 0xE0B050);
 
         super.render(g, mouseX, mouseY, partialTick);
+    }
+
+    /**
+     * Whether a shader mod is present.
+     *
+     * <p>Only used to decide the colour of one line of text, so it is deliberately a plain
+     * lookup with no caching and no reflection: {@code ModList} is on both sides and the ids
+     * are stable. If it throws, the line is drawn in the neutral colour — the warning is still
+     * shown, just not highlighted.
+     */
+    private static boolean shadersLoaded() {
+        try {
+            return net.minecraftforge.fml.ModList.get().isLoaded("oculus")
+                    || net.minecraftforge.fml.ModList.get().isLoaded("iris")
+                    || net.minecraftforge.fml.ModList.get().isLoaded("optifine");
+        } catch (Throwable t) {
+            return false;
+        }
     }
 
     @Override

@@ -83,40 +83,48 @@ public class UndyingConfigScreen extends Screen {
 
     @Override
     protected void init() {
-        int columns = 2;
-        int perColumn = (toggles.size() + columns - 1) / columns;
-        int w = 150;
-        int h = 20;
-        int gapX = 8;
-        int gapY = 4;
+        ConfigLayout.Plan plan = ConfigLayout.plan(toggles.size(), this.width, this.height);
+        int w = ConfigLayout.columnWidth(this.width, plan.columns());
+        int h = plan.buttonHeight();
+        int gapX = ConfigLayout.GAP_X;
+        int startY = plan.startY();
 
-        int totalW = columns * w + gapX;
-        int startX = (this.width - totalW) / 2;
-        int startY = 48;
+        int totalW = plan.columns() * w + (plan.columns() - 1) * gapX;
+        int startX = Math.max(8, (this.width - totalW) / 2);
 
         for (int i = 0; i < toggles.size(); i++) {
             Toggle t = toggles.get(i);
-            int col = i / perColumn;
-            int row = i % perColumn;
+            int col = i / plan.perColumn();
+            int row = i % plan.perColumn();
             int x = startX + col * (w + gapX);
-            int y = startY + row * (h + gapY);
+            int y = startY + row * plan.pitch();
 
             this.addRenderableWidget(Button.builder(label(t), b -> flip(t))
                     .bounds(x, y, w, h).build());
         }
 
-        int bottom = this.height - 40;
+        // Bottom row: four buttons, sized to the window so that they cannot overlap each
+        // other on a narrow window either.
+        int bottom = ConfigLayout.bottomRowY(this.height);
+        int gap = 4;
+        int total = Math.min(this.width - 20, 4 * 72 + 3 * gap);
+        int btnW = Math.max(40, (total - 3 * gap) / 4);
+        int x = (this.width - (btnW * 4 + gap * 3)) / 2;
+
         this.addRenderableWidget(Button.builder(Component.translatable("undying.config.allow_list"),
                         b -> this.minecraft.setScreen(new DomainAllowScreen(this)))
-                .bounds(this.width / 2 - 152, bottom, 72, 20).build());
+                .bounds(x, bottom, btnW, 20).build());
+        x += btnW + gap;
         this.addRenderableWidget(Button.builder(Component.translatable("undying.config.glow"),
                         b -> this.minecraft.setScreen(new GlowScreen(this)))
-                .bounds(this.width / 2 - 75, bottom, 72, 20).build());
+                .bounds(x, bottom, btnW, 20).build());
+        x += btnW + gap;
         this.addRenderableWidget(Button.builder(Component.translatable("undying.config.quick"),
                         b -> this.minecraft.setScreen(new QuickControlScreen(this)))
-                .bounds(this.width / 2 + 2, bottom, 72, 20).build());
+                .bounds(x, bottom, btnW, 20).build());
+        x += btnW + gap;
         this.addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
-                .bounds(this.width / 2 + 79, bottom, 72, 20).build());
+                .bounds(x, bottom, btnW, 20).build());
     }
 
     private Component label(Toggle t) {
@@ -156,6 +164,14 @@ public class UndyingConfigScreen extends Screen {
         }
 
         ModConfig.save();
+
+        // Tell the integrity guard this was the player's own hand, not an external mod. Without
+        // this, turning a protected child switch off while immortal mode is on was undone
+        // within two seconds by the guard's "repair" step — the switch refused to stay off.
+        com.undying.core.Networking.sendConfigToggled();
+
+        // The tick and packet handlers live on the server side, but they read the same
+        // ModConfig instance, so the change is already live. Rebuilding only refreshes text.
         this.rebuildWidgets();
     }
 
