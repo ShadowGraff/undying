@@ -147,12 +147,12 @@ current implementation:
 | 项目 / Item | 数量 / Count |
 |---|---|
 | Mixin 类 / Mixin classes | 14 |
-| 注入点 / Injection points | 21 |
+| 注入点 / Injection points | 22 |
 | 其中可取消原版流程 / Of which cancellable | 15 |
 | 死亡锁拦截点 / Death-lock interception points | 11 |
-| 环境门禁调用点 / Environment gate call sites | 20（分布 14 个文件 / across 14 files） |
+| 环境门禁调用点 / Environment gate call sites | 27（分布 18 个文件 / across 18 files） |
 | 自检探针 / Self-check probes | 10 |
-| 主要类 / Main classes | 83（不含 14 个 mixin / excluding the 14 mixins） |
+| 主要类 / Main classes | 84（不含 14 个 mixin / excluding the 14 mixins） |
 | 单元测试 / Unit tests | 118（13 个测试类 / 13 test classes） |
 
 **一个死亡要真正发生，需要上述拦截点同时失效。** 每个点都在代码里独立实现，不共享同一个开关。
