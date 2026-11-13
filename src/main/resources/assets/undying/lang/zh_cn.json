@@ -52,5 +52,6 @@
   "undying.teleport.origin": "来源：%s",
   "undying.teleport.frozen": "游戏已暂停，作答后继续",
   "undying.teleport.yes": "允许传送",
-  "undying.teleport.no": "留在这里"
+  "undying.teleport.no": "留在这里",
+  "undying.option.flight": "飞行（双击空格）"
 }

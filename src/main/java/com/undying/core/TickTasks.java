@@ -40,6 +40,11 @@ public final class TickTasks {
         SaveSnapshot.onTick(p);    // periodically capture and persist a snapshot
         checkOp(p, master);        // prevent OP from being revoked behind our back
 
+        // A granted flight permission has to be taken back when the switch goes off, or the
+        // player keeps flying with the setting visibly disabled. Once a second is enough:
+        // nothing about this is time-critical, and it is a field read on the other 19 ticks.
+        if (p.tickCount % Const.TICKS_PER_SECOND == 0) Flight.enforce(p);
+
         // An execution is in progress: skip the rest of this tick's processing
         if (Execution.isRunning(pid)) {
             Execution.tick(p);

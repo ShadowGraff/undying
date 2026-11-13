@@ -52,5 +52,6 @@
   "undying.teleport.origin": "Origin: %s",
   "undying.teleport.frozen": "The game is paused until you answer",
   "undying.teleport.yes": "Go there",
-  "undying.teleport.no": "Stay here"
+  "undying.teleport.no": "Stay here",
+  "undying.option.flight": "Flight (double-tap jump)"
 }

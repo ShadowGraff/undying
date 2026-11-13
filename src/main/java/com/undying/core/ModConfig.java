@@ -59,6 +59,11 @@ public class ModConfig {
     public static final ForgeConfigSpec.BooleanValue INVENTORY_GUARD;
     public static final ForgeConfigSpec.BooleanValue TELEPORT_GUARD;
 
+    // ── Flight (double-tap jump while immortal) ──
+    //    Immortality that leaves the player unable to cross a ravine is a strange kind of
+    //    immortality. It is a movement convenience, not a protection, so it has its own switch.
+    public static final ForgeConfigSpec.BooleanValue FLIGHT;
+
     static {
         ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
         b.push("undying");
@@ -260,6 +265,21 @@ public class ModConfig {
                 "玩家自己敲的 /tp 也会问：早先想放行它的判据把一次真实玩家命令误判成了模组行为，",
                 "所以改成一律询问——确定无误比偶尔聪明更重要。",
                 "不在拦截范围：末影珍珠、紫颂果、传送门、重生（走的是别的路径，不会弹窗）。")
+                .define("enabled", true);
+        b.pop();
+
+        // ── Flight ──
+        b.comment("=== Flight (double-tap jump) ===",
+                        "=== 飞行（双击空格起飞）===")
+                .push("flight");
+        FLIGHT = b.comment(
+                "While immortal mode is on, double-tap jump to fly, double-tap again to land.",
+                "Not applied in creative (vanilla already flies) or spectator (cannot be affected).",
+                "Survival flight is granted through the ordinary abilities packet, so nothing",
+                "else in the game has to know about it.",
+                "不朽模式开启时，双击空格起飞，再双击落地。",
+                "创造模式（原版本来就能飞）与旁观者（无法影响）不处理。",
+                "飞行由原版的 abilities 封包授予，游戏里其它部分不需要知道这件事。")
                 .define("enabled", true);
         b.pop();
 

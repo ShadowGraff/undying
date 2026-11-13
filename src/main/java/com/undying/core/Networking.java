@@ -37,6 +37,8 @@ public class Networking {
                 AskTeleportMessage::encode, AskTeleportMessage::decode, AskTeleportMessage::handle);
         CHANNEL.registerMessage(3, TeleportAnswerMessage.class,
                 TeleportAnswerMessage::encode, TeleportAnswerMessage::decode, TeleportAnswerMessage::handle);
+        CHANNEL.registerMessage(4, ToggleFlyMessage.class,
+                ToggleFlyMessage::encode, ToggleFlyMessage::decode, ToggleFlyMessage::handle);
     }
 
     // ── S2C: open the creative item menu ──
@@ -187,5 +189,34 @@ public class Networking {
     /** Send the answer back; only called from the client thread. */
     public static void sendTeleportAnswer(boolean accept) {
         CHANNEL.sendToServer(new TeleportAnswerMessage(accept));
+    }
+
+    // ── Flight ──
+
+    /**
+     * C2S: "I double-tapped jump."
+     *
+     * <p>Carries no state at all. The server decides whether the player may fly and whether
+     * this is a take-off or a landing, from the abilities it already owns. A packet that said
+     * "make me fly" would be a packet another client could send regardless of the switch, and
+     * the server would have to trust it.
+     */
+    public static class ToggleFlyMessage {
+        public static void encode(ToggleFlyMessage m, FriendlyByteBuf b) {}
+        public static ToggleFlyMessage decode(FriendlyByteBuf b) { return new ToggleFlyMessage(); }
+
+        public static void handle(ToggleFlyMessage m, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> {
+                ServerPlayer p = ctx.get().getSender();
+                if (p == null) return;
+                Flight.toggle(p);
+            });
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    /** Only called from the client thread. */
+    public static void sendToggleFly() {
+        CHANNEL.sendToServer(new ToggleFlyMessage());
     }
 }

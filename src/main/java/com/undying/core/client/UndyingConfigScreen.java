@@ -70,6 +70,7 @@ public class UndyingConfigScreen extends Screen {
         add("threatScan", ModConfig.THREAT_SCAN);
         add("inventoryGuard", ModConfig.INVENTORY_GUARD);
         add("teleportGuard", ModConfig.TELEPORT_GUARD);
+        add("flight", ModConfig.FLIGHT);
         add("domain", ModConfig.DOMAIN_ENABLED);
     }
 
