@@ -55,6 +55,14 @@ public final class LlmClient {
      * @param onError a message to show when something went wrong
      */
     public static void ask(String text, Consumer<String> onReply, Consumer<String> onError) {
+        ask(text, null, onReply, onError);
+    }
+
+    /**
+     * @param imagePngBase64 optional screenshot, already scaled and encoded; null for text only
+     */
+    public static void ask(String text, String imagePngBase64,
+                           Consumer<String> onReply, Consumer<String> onError) {
         if (text == null || text.isBlank()) return;
 
         if (!enabled()) {
@@ -73,7 +81,7 @@ public final class LlmClient {
 
         JsonObject body;
         try {
-            body = buildRequest(text);
+            body = buildRequest(text, imagePngBase64);
         } catch (Throwable t) {
             BUSY.set(false);
             onError.accept("请求构造失败: " + t);
@@ -117,7 +125,7 @@ public final class LlmClient {
 
     // ═══════════ Request ═══════════
 
-    private static JsonObject buildRequest(String text) {
+    private static JsonObject buildRequest(String text, String imagePngBase64) {
         JsonObject body = new JsonObject();
         body.addProperty("model", value(LlmConfig.MODEL));
         body.addProperty("max_tokens", intValue(LlmConfig.MAX_TOKENS, 800));
@@ -133,7 +141,7 @@ public final class LlmClient {
         for (LlmChat.Msg m : LlmChat.recent(limit)) {
             messages.add(message(m.role, m.content));
         }
-        messages.add(message("user", text));
+        messages.add(userMessage(text, imagePngBase64));
 
         body.add("messages", messages);
 
@@ -141,6 +149,36 @@ public final class LlmClient {
             body.add("tools", LlmTools.schemas());
         }
         return body;
+    }
+
+    /**
+     * A user turn, optionally carrying an image.
+     *
+     * <p>The multimodal shape is a content array rather than a string. Text-only providers
+     * reject that shape, so it is used only when there is actually an image to send.
+     */
+    private static JsonObject userMessage(String text, String imagePngBase64) {
+        if (imagePngBase64 == null || imagePngBase64.isEmpty()) return message("user", text);
+
+        JsonObject msg = new JsonObject();
+        msg.addProperty("role", "user");
+
+        JsonArray parts = new JsonArray();
+
+        JsonObject textPart = new JsonObject();
+        textPart.addProperty("type", "text");
+        textPart.addProperty("text", text);
+        parts.add(textPart);
+
+        JsonObject imagePart = new JsonObject();
+        imagePart.addProperty("type", "image_url");
+        JsonObject url = new JsonObject();
+        url.addProperty("url", "data:image/png;base64," + imagePngBase64);
+        imagePart.add("image_url", url);
+        parts.add(imagePart);
+
+        msg.add("content", parts);
+        return msg;
     }
 
     private static JsonObject message(String role, String content) {

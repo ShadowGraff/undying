@@ -67,8 +67,12 @@ public final class LlmCommands {
         String warn = LlmClient.usageWarning();
         if (warn != null) say(warn);
 
-        say("（思考中…）");
-        LlmClient.ask(text,
+        // One-shot: taking it here means a forgotten screenshot cannot ride along with a later
+        // message the player has long stopped thinking about.
+        String image = ScreenshotCapture.takePending();
+        say(image != null ? "（思考中…含截图）" : "（思考中…）");
+
+        LlmClient.ask(text, image,
                 reply -> Minecraft.getInstance().player.displayClientMessage(
                         Component.literal(PREFIX + reply), false),
                 error -> Minecraft.getInstance().player.displayClientMessage(
