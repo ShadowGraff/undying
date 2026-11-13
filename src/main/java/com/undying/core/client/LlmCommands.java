@@ -85,11 +85,11 @@ public final class LlmCommands {
         String image = ScreenshotCapture.takePending();
         say(image != null ? "（思考中…含截图）" : "（思考中…）");
 
-        LlmClient.ask(text, image,
-                reply -> Minecraft.getInstance().player.displayClientMessage(
-                        Component.literal(PREFIX + reply), false),
-                error -> Minecraft.getInstance().player.displayClientMessage(
-                        Component.literal("§c[助手] " + error), false));
+        // Through say(): the reply arrives seconds later, and the player may have left the
+        // world by then. Dereferencing mc.player there is a null pointer the callback wrapper
+        // would swallow, so the player would simply never see the answer to a question they
+        // already paid for.
+        LlmClient.ask(text, image, LlmCommands::say, error -> say("§c" + error));
     }
 
     /**
@@ -111,8 +111,7 @@ public final class LlmCommands {
                     LlmChat.add("assistant", "（此前对话摘要）" + summary);
                     say("已压缩成摘要，新会话从这里开始");
                 },
-                error -> Minecraft.getInstance().player.displayClientMessage(
-                        Component.literal("§c[助手] " + error), false));
+                error -> say("§c" + error));
     }
 
     private static void status() {
