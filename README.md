@@ -153,7 +153,7 @@ current implementation:
 | 环境门禁调用点 / Environment gate call sites | 20（分布 14 个文件 / across 14 files） |
 | 自检探针 / Self-check probes | 10 |
 | 主要类 / Main classes | 83（不含 14 个 mixin / excluding the 14 mixins） |
-| 单元测试 / Unit tests | 112（12 个测试类 / 12 test classes） |
+| 单元测试 / Unit tests | 118（13 个测试类 / 13 test classes） |
 
 **一个死亡要真正发生，需要上述拦截点同时失效。** 每个点都在代码里独立实现，不共享同一个开关。
 
@@ -488,6 +488,7 @@ Config: `[undying.teleportGuard] enabled`, on by default. Like everything else h
 | 持续 / Duration | 30 秒 · 60 秒 · 5 分钟 · 持续（点击即开启）/ 30 s, 60 s, 5 min, until turned off |
 | 半径 / Radius | 16 · 32 · 48 · 64 格 / blocks |
 | 碰撞箱 / Hitboxes | 画出每个发光生物的碰撞框 / draw the box around each glowing creature |
+| 数量上限 / Cap | 同时标记最近的 32 个（`maxTargets`）/ nearest 32 at a time (`maxTargets`) |
 
 ⚠️ **没有「中立」这一档**，因为 Minecraft 没有这个分类。可靠的标记只有 `Enemy` 接口（会主动敌对），而末影人、僵尸猪灵都归在 `MONSTER` 里。需要中间地带就把目标设为「自定义」，在配置文件里按类别或具体实体列出来。
 
@@ -496,6 +497,10 @@ Config: `[undying.teleportGuard] enabled`, on by default. Like everything else h
 只清理本模组加上的发光：光灵箭给同一只生物上的发光不会被取消。
 
 Only the effects this mod applied are cleared — a spectral arrow's glow on the same creature is left alone.
+
+⚠️ **轮廓被光影吞掉时看碰撞箱。** 原版轮廓走的是 `OutlineBufferSource`，而光影/优化模组（Oculus、Iris、部分渲染优化）会改写这条管线，轮廓可能因此不可见。碰撞箱是本模组自己画的线框，不经那条管线，所以看不见轮廓时它就是唯一还看得见的通道。开启透视时聊天栏会报「标记 N 个」：0 个说明目标或半径设错了，大于 0 却看不见轮廓说明是渲染通道的问题。
+
+⚠️ **If the outline is invisible under a shader pack, use hitboxes.** Vanilla outlines go through `OutlineBufferSource`, which shader and render-optimisation mods rewrite. The hitboxes are drawn by this mod and do not use that pipeline. Starting the outline reports how many creatures were marked: zero means the target/radius is wrong, non-zero with nothing visible means the render path is the problem.
 
 配置 `[undying.glow]`；入口在 `O` →「透视…」。
 
@@ -633,12 +638,12 @@ provides the full range of single-player functionality.
 ./gradlew test      # 单元测试 / unit tests
 ```
 
-单元测试覆盖的是**能被测试的那一层**：环境门禁的两条判据、联机入口拦截、审计比对、领域的放行规则、物品栏变动的判定阈值与计数、Y/N 三次确认、开关级联、报告文件滚动、jar 内资源覆盖的解析与分类。测试不将 Forge 工具链放入 classpath，因此无需预先搭建游戏环境。
+单元测试覆盖的是**能被测试的那一层**：环境门禁的两条判据、联机入口拦截、审计比对、领域的放行规则、透视目标筛选、物品栏变动的判定阈值与计数、Y/N 三次确认、开关级联、配置界面的网格排布、报告文件滚动、jar 内资源覆盖的解析与分类。测试不将 Forge 工具链放入 classpath，因此无需预先搭建游戏环境。
 
 Unit tests cover the layer that *can* be tested: both environment-gate predicates, the multiplayer
-entrance ban, audit comparison, the domain allow-list rules, the inventory-change threshold and
-counting, the three-press confirmation, the switch rules, report-file rotation, and mod-jar
-resource parsing and classification. The Forge toolchain is deliberately excluded from the test
+entrance ban, audit comparison, the domain allow-list rules, the outline target filter, the
+inventory-change threshold and counting, the three-press confirmation, the switch rules, the config
+screen's grid layout, report-file rotation, and mod-jar resource parsing and classification. The Forge toolchain is deliberately excluded from the test
 classpath, so tests run without provisioning the game.
 
 **这层覆盖不到的东西要说清楚**：19 个注入点、图形界面、以及任何需要真实 Forge 运行时对象的
