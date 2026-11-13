@@ -86,5 +86,7 @@
   "undying.quick.mode_creative": "Creative",
   "undying.quick.mode_adventure": "Adventure",
   "undying.quick.mode_spectator": "Spectator",
-  "undying.quick.note": "Single-player only · time and weather stay frozen until you press the release button"
+  "undying.quick.note": "Single-player only · time and weather stay frozen until you press the release button",
+  "undying.option.quickControls": "Quick controls",
+  "undying.option.commandAudit": "Command audit"
 }

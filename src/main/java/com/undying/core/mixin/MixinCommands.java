@@ -2,6 +2,7 @@ package com.undying.core.mixin;
 
 import com.undying.core.IntegrityGuard;
 import com.undying.core.ModConfig;
+import com.undying.core.CommandAudit;
 import com.undying.core.ModLog;
 import com.undying.core.Notify;
 import com.undying.core.TeleportGuard;
@@ -95,11 +96,16 @@ public abstract class MixinCommands {
         // player typed it. Only commands that actually execute are noted: a cancelled /kill
         // must not leave behind a stamp that would excuse the next teleport in the same tick.
         try {
+            boolean fromPlayer = src.getEntity() instanceof ServerPlayer;
             String who;
             if (src.getEntity() instanceof ServerPlayer player) who = "player:" + player.getGameProfile().getName();
             else if (src.getEntity() == null) who = "no-entity";
             else who = src.getEntity().getClass().getSimpleName();
             TeleportGuard.noteCommand(src.getServer().getTickCount(), cmd, who);
+
+            // Same place, same reason: this is the only point in the game that sees every
+            // command, whoever ran it.
+            CommandAudit.record(src.getServer(), cmd, fromPlayer);
         } catch (Throwable t) {
             ModLog.swallowed("MixinCommands.noteCommand", t);
         }

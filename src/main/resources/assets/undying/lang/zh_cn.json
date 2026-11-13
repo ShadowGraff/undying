@@ -86,5 +86,7 @@
   "undying.quick.mode_creative": "创造",
   "undying.quick.mode_adventure": "冒险",
   "undying.quick.mode_spectator": "旁观",
-  "undying.quick.note": "仅在单人世界生效 · 时间与天气会被冻结，直到点「恢复」"
+  "undying.quick.note": "仅在单人世界生效 · 时间与天气会被冻结，直到点「恢复」",
+  "undying.option.quickControls": "快捷控制页",
+  "undying.option.commandAudit": "指令审计"
 }

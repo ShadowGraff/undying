@@ -47,6 +47,11 @@ public class ClientHooks {
                 new com.undying.core.client.InventoryPreviewScreen(pending, hasBaseline, rows));
     }
 
+    /** One command just ran; put it in the corner window. */
+    public static void showCommandAudit(String text) {
+        com.undying.core.client.CommandAuditHud.push(text);
+    }
+
     /**
      * Is this world currently published to LAN?
      *

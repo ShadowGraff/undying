@@ -71,6 +71,8 @@ public class UndyingConfigScreen extends Screen {
         add("inventoryGuard", ModConfig.INVENTORY_GUARD);
         add("teleportGuard", ModConfig.TELEPORT_GUARD);
         add("flight", ModConfig.FLIGHT);
+        add("quickControls", ModConfig.QUICK_CONTROLS);
+        add("commandAudit", ModConfig.COMMAND_AUDIT);
         add("domain", ModConfig.DOMAIN_ENABLED);
     }
 
