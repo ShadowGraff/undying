@@ -159,8 +159,38 @@ public final class PlayerState {
 
     // ══════════════ Teleport guard ══════════════
 
-    /** A teleport that was blocked and is waiting for the player's answer; null when none. */
+    /** In-flight teleport waiting for the player to say yes; null when nothing is pending. */
     public TeleportGuard.Pending pendingTeleport;
+
+    // ══════════════ Flight ══════════════
+
+    /**
+     * True while the current flight permission was handed out by this mod.
+     *
+     * <p>Without it, {@code Flight.enforce} cannot tell our grant from one another mod made,
+     * and either leaves the player flying after the switch is off, or clears someone else's
+     * permission. Both happened in testing.
+     */
+    public boolean flightOwned;
+
+    /** {@code mayfly} as it was before we granted it, so landing can put it back. */
+    public boolean flightMayflyBefore;
+
+    // ══════════════ Glow ══════════════
+
+    /** Whether the outline feature is currently on for this player. */
+    public boolean glowActive;
+
+    /** Tick at which it expires; 0 means "until switched off". */
+    public int glowUntilTick;
+
+    /**
+     * Entities this mod put {@code GLOWING} on.
+     *
+     * <p>The only safe thing to clear when the feature stops. A spectral arrow grants the same
+     * effect, and clearing every glowing entity would cancel someone else's.
+     */
+    public java.util.Set<java.util.UUID> glowTargets;
 
     // ══════════════ Mod scan ══════════════
 

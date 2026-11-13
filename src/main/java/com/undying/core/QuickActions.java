@@ -36,6 +36,21 @@ public final class QuickActions {
     /** How long a re-applied weather window lasts, in ticks. */
     private static final int WEATHER_WINDOW = 1200;
 
+    /**
+     * Set while this mod is performing a game-mode change at the player's own request.
+     *
+     * <p>The gamemode lock exists to stop <i>other mods</i> changing the mode behind the
+     * player's back. It cannot tell "a mod did this" from "the player pressed a button in our
+     * own panel", so the panel has to say which it is. Without this, the quick-control button
+     * is blocked by our own anti-tamper — which is exactly what happened the first time it was
+     * tried, and it looked like a random failure because the lock also lets OP players through.
+     */
+    private static final ThreadLocal<Boolean> PLAYER_REQUEST = ThreadLocal.withInitial(() -> false);
+
+    public static boolean isPlayerRequest() {
+        return Boolean.TRUE.equals(PLAYER_REQUEST.get());
+    }
+
     private static boolean weatherLocked;
     private static boolean lockedRaining;
     private static boolean lockedThundering;
@@ -99,9 +114,19 @@ public final class QuickActions {
     }
 
     private static void mode(ServerPlayer p, GameType type, String zh, String en) {
+        // Marked as a player request so our own gamemode lock lets it through, and only it:
+        // a mod calling setGameMode at any other moment is still blocked.
+        boolean ok;
+        PLAYER_REQUEST.set(true);
+        try {
+            ok = p.setGameMode(type);
+        } finally {
+            PLAYER_REQUEST.set(false);
+        }
+
         // Not silent on refusal: the gamemode lock may be doing its job, and "I clicked and
         // nothing happened" is the failure this project keeps having to apologise for.
-        if (!p.setGameMode(type)) {
+        if (!ok) {
             Msg.warn(p, UndyingMod.TAG)
                     .bi("切换失败：被模式锁拦住了", "Blocked by the game mode lock").send();
             return;

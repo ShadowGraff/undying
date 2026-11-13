@@ -51,13 +51,17 @@ public abstract class MixinSynchedEntityDataHealth {
         try {
             if (!(value instanceof Float incoming)) return value;
 
+            // Cheapest test first. Almost every write here is health 20 or absorption, both
+            // above the floor, so this returns before touching a config value or the gate —
+            // and this method runs on the single hottest write path in the game.
+            if (incoming > Const.DEATH_LOCK_HEALTH) return value;
+
             SynchedEntityData self = (SynchedEntityData) (Object) this;
             Entity owner = ((SynchedEntityDataOwnerAccess) self).undying$getOwner();
             if (!(owner instanceof ServerPlayer p)) return value;
 
             if (!ModConfig.MASTER_TOGGLE.get() || !ModConfig.DEATH_LOCK.get()) return value;
             if (!Environment.isAllowed(p)) return value;   // single-player only
-            if (incoming > Const.DEATH_LOCK_HEALTH) return value;
 
             if (DeathLock.isSuicidePending(p.getUUID())) return value;
             if (DeathLock.isGranted(p)) return value;

@@ -48,8 +48,46 @@ public final class Environment {
      *
      * @param server the server to test; null means "no server yet" and is treated as blocked
      */
+    /**
+     * Last computed answer, keyed by server and tick.
+     *
+     * <h3>Why a memo and not a cached flag with invalidation</h3>
+     * This is called from {@code SynchedEntityData.set}, which runs thousands of times a second,
+     * and each call allocated a {@code DistExecutor} lambda and asked the integrated server for
+     * its local IP string — a fresh string every time. Measured in play, that showed up as a
+     * noticeable frame-rate cost.
+     *
+     * <p>The answer cannot change inside one tick: publishing to LAN and closing it both happen
+     * between ticks. A one-tick memo therefore loses at most 50 ms of a transition that no one
+     * can exploit — a player would have to open the world to LAN and have someone connect
+     * inside the same tick.
+     */
+    private static MinecraftServer cachedServer;
+    private static long cachedTick = Long.MIN_VALUE;
+    private static boolean cachedResult;
+
     public static boolean isAllowed(MinecraftServer server) {
         if (server == null) return false;
+
+        long tick;
+        try {
+            tick = server.getTickCount();
+        } catch (Throwable t) {
+            tick = Long.MIN_VALUE;   // cannot key the memo: compute every time
+        }
+
+        if (server == cachedServer && tick != Long.MIN_VALUE && tick == cachedTick) {
+            return cachedResult;
+        }
+
+        boolean result = computeAllowed(server);
+        cachedServer = server;
+        cachedTick = tick;
+        cachedResult = result;
+        return result;
+    }
+
+    private static boolean computeAllowed(MinecraftServer server) {
         boolean singleplayer;
         try {
             singleplayer = server.isSingleplayer();

@@ -110,6 +110,11 @@ public final class InventoryGuard {
             if (!ModConfig.INVENTORY_GUARD.get()) return;
             if (p == null) return;
 
+            // Every other tick. This loop reads 41 ItemStacks and hashes their NBT, and a bulk
+            // change large enough to ask about does not become unnoticeable 50 ms later.
+            // Measured need: the per-tick cost was visible in the frame rate.
+            if ((p.tickCount & 1) != 0) return;
+
             State s = state(p);
             Inventory inv = p.getInventory();
             int[] now = fingerprint(inv);

@@ -23,7 +23,7 @@ Everything this mod does, at a glance. Each item is detailed in its own section 
 | 物品栏预览 / Inventory preview | 长按 `I` 冻结游戏，列出背包自上次查看以来的变化 / Hold `I` to list what changed |
 | 快捷控制 / Quick controls | O 面板里直接设置时间、天气、游戏模式 / Time, weather and game mode from the panel |
 | 指令审计 / Command audit | 左上角小窗显示每条执行的指令，常见指令翻成一句话 / Every command, translated |
-| 助手 / Assistant | `/ask` 与模型对话，只读工具查询世界；默认关闭 / `/ask` chat with read-only tools; off by default |
+| 透视 / Outline | 隔墙显示生物轮廓，可选目标、时长、半径与碰撞箱 / See creatures through walls, with target, duration and hitbox options |
 | 出生保护 / Spawn protection | 进入世界后短暂无敌 / Brief invulnerability after entering the world |
 
 **物品与进度 / Items and progress**
@@ -57,7 +57,7 @@ Everything this mod does, at a glance. Each item is detailed in its own section 
 
 | 功能 / Feature | 作用 / What it does |
 |---|---|
-| 配置界面 / Config screen | `O` 键打开，24 个开关，另有快捷控制页；键位可在「控制 → 按键绑定」里改 / Opened with `O`, twenty-four switches plus a quick-control page |
+| 配置界面 / Config screen | `O` 键打开，25 个开关，另有领域白名单、透视、快捷控制三页；键位可在「控制 → 按键绑定」里改 / Opened with `O`, twenty-five switches plus three sub-pages |
 | 领域白名单 / Domain allow-list | 按类别勾选 + 按实体搜索勾选 / Category toggles plus a searchable entity list |
 | 语言 / Language | 界面随游戏语言切换；聊天中英并排；配置注释双语 / GUI follows the game language; chat shows both; bilingual config comments |
 | 物品栏提示 / Inventory prompt | 左下角非阻塞面板，`Y×3` 回滚 / `N×3` 忽略 / Non-blocking corner panel, `Y×3` to roll back, `N×3` to ignore |
@@ -152,8 +152,8 @@ current implementation:
 | 死亡锁拦截点 / Death-lock interception points | 11 |
 | 环境门禁调用点 / Environment gate call sites | 20（分布 14 个文件 / across 14 files） |
 | 自检探针 / Self-check probes | 10 |
-| 主要类 / Main classes | 86（不含 14 个 mixin / excluding the 14 mixins） |
-| 单元测试 / Unit tests | 104（11 个测试类 / 11 test classes） |
+| 主要类 / Main classes | 83（不含 14 个 mixin / excluding the 14 mixins） |
+| 单元测试 / Unit tests | 112（12 个测试类 / 12 test classes） |
 
 **一个死亡要真正发生，需要上述拦截点同时失效。** 每个点都在代码里独立实现，不共享同一个开关。
 
@@ -476,38 +476,30 @@ Config: `[undying.teleportGuard] enabled`, on by default. Like everything else h
 
 ---
 
-## 助手 / Assistant
+## 透视 / Outline
 
-> ⚠️ **实验性功能，尚未经过完整的安全审查。**
->
-> 开启后，你输入的文字、坐标、附近实体名称、已加载模组列表，以及你主动附上的截图，会发送到本模组**无法控制的第三方接口**。
-> 因使用本功能造成的任何损失——包括但不限于 API 费用、数据泄露、账号问题、存档损坏——**作者不承担任何责任**。风险自负。
-> 默认关闭，且不会主动询问；API Key 以明文存在本机配置文件里。
+**隔墙看见生物。** 用的是原版发光效果，轮廓由游戏自己绘制——遮挡、距离和光影都按正常规则走。
 
-> ⚠️ **Experimental and not fully security-reviewed.**
->
-> Once enabled, the text you type, your coordinates, nearby entity names, your mod list, and any screenshot you attach are sent to a **third-party endpoint this mod does not control**.
-> The author accepts **no responsibility for any loss** arising from its use, including but not limited to API charges, data disclosure, account issues, or a damaged world. Use at your own risk.
-> Off by default, never asks, and the API key is stored as plain text in a local config file.
+**See creatures through walls.** Vanilla's glowing effect does the drawing, so occlusion, distance and shaders behave normally.
 
-`/ask 我该往哪走` —— 在聊天栏里和一个模型对话。默认**关闭**，也不会主动询问。
-
-`/ask where should I go` — talk to a model from the chat bar. **Off by default**, and it never asks.
-
-| 命令 / Command | 作用 / Effect |
+| 设置 / Setting | 可选项 / Options |
 |---|---|
-| `/ask <消息>` | 发一条消息 / send a message |
-| `/ask status` | 开关、消息条数、估算用量 / switch, message count, estimated usage |
-| `/ask compact` | 把对话压成摘要，开一个新会话 / summarise and start fresh |
-| `/ask reset` | 清空对话 / clear |
+| 目标 / Target | 全部 · 敌对 · 友好 · 自定义 / all, hostile, friendly, custom |
+| 持续 / Duration | 30 秒 · 60 秒 · 5 分钟 · 持续（点击即开启）/ 30 s, 60 s, 5 min, until turned off |
+| 半径 / Radius | 16 · 32 · 48 · 64 格 / blocks |
+| 碰撞箱 / Hitboxes | 画出每个发光生物的碰撞框 / draw the box around each glowing creature |
 
-`F2 + \`` 截取当前游戏画面，附在下一条消息里（只发一次，不落盘）。只读工具：坐标、附近实体（带模组 id）、背包摘要、模组列表——**没有任何工具能修改东西或执行指令**。
+⚠️ **没有「中立」这一档**，因为 Minecraft 没有这个分类。可靠的标记只有 `Enemy` 接口（会主动敌对），而末影人、僵尸猪灵都归在 `MONSTER` 里。需要中间地带就把目标设为「自定义」，在配置文件里按类别或具体实体列出来。
 
-`F2 + \`` attaches the current screen to the next message (once, never written to disk). Tools are read-only: position, nearby entities with their mod ids, inventory summary, mod list — **no tool can change anything or run a command**.
+⚠️ **There is no "neutral" option**, because Minecraft has no such category. The only dependable marker is the `Enemy` interface; endermen and zombified piglins sit in `MONSTER`. Pick Custom and list what you want by category or entity id.
 
-⚠️ 开启后，你的消息、坐标和附近实体的名字会发送到 `apiUrl` 指向的接口。API Key 存在 `config/undying-client.toml`，**只在客户端读取**，不会随存档或服务器同步。对话保存在 `config/undying/chat.json`。
+只清理本模组加上的发光：光灵箭给同一只生物上的发光不会被取消。
 
-⚠️ Once enabled, your messages, coordinates and nearby entity names are sent to the endpoint in `apiUrl`. The key lives in `config/undying-client.toml`, is read **on the client only**, and is never synced with a save or a server. Conversation is stored in `config/undying/chat.json`.
+Only the effects this mod applied are cleared — a spectral arrow's glow on the same creature is left alone.
+
+配置 `[undying.glow]`；入口在 `O` →「透视…」。
+
+Config `[undying.glow]`; opened from `O` → "Outline...".
 
 ---
 
@@ -594,7 +586,7 @@ broken UI is more disruptive than an un-banned button), while the gate fails clo
 
 ### 配置界面 / Config screen
 
-`O` 键打开（默认键位，可在「控制 → 按键绑定 → Undying」里改）。24 个开关两列排开，状态用颜色区分；底部三个入口分别进入「领域白名单」「快捷控制」和关闭界面。所有改动即时写入 TOML，没有「保存」按钮——需要二次确认的勾选框是最容易被存错的东西。
+`O` 键打开（默认键位，可在「控制 → 按键绑定 → Undying」里改）。25 个开关两列排开，状态用颜色区分；底部四个入口分别进入「领域白名单」「透视」「快捷控制」和关闭界面。所有改动即时写入 TOML，没有「保存」按钮——需要二次确认的勾选框是最容易被存错的东西。
 
 Opened with `O` (a real key binding, so it appears under Controls → Key Binds → Undying and can be rebound). Twenty switches in two columns; the buttons at the bottom open the domain allow-list editor or close the screen. Changes are written to the TOML immediately — there is no Save button, because a checkbox that needs a second confirmation is the thing that gets saved wrongly.
 

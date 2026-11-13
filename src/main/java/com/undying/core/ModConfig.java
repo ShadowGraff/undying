@@ -70,6 +70,14 @@ public class ModConfig {
     // ── Command audit (show every executed command, translated) ──
     public static final ForgeConfigSpec.BooleanValue COMMAND_AUDIT;
 
+    // ── Glow (see creatures through walls) ──
+    public static final ForgeConfigSpec.BooleanValue GLOW;
+    public static final ForgeConfigSpec.ConfigValue<String> GLOW_TARGET;
+    public static final ForgeConfigSpec.IntValue GLOW_RANGE;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> GLOW_CATEGORIES;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> GLOW_ENTITIES;
+    public static final ForgeConfigSpec.BooleanValue GLOW_HITBOX;
+
     static {
         ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
         b.push("undying");
@@ -321,8 +329,51 @@ public class ModConfig {
                 "is the case worth reconstructing afterwards.",
                 "在左上角的小透明窗口里显示每一条执行的指令，常见指令会翻成一句话。",
                 "纯只读：不拦截任何东西，也不给任何指令贴「可疑」标签。",
-                "非玩家发起的指令会额外写进滚动报告——那才是事后需要还原的部分。")
+                "非玩家发起的指令会额外写进滚动报告——那才是事后需要还原的部分。",
+                "",
+                "默认关闭：实测下来，左上角持续有文字会明显干扰视野与瞄准。",
+                "需要时再打开，或把窗口当成临时诊断工具而不是常驻 HUD。",
+                "Default OFF after measuring it in play: a permanent corner window covers the",
+                "crosshair area and distracts. Turn it on when you want to see what is running,",
+                "not as a HUD you leave on.")
+                .define("enabled", false);
+        b.pop();
+
+        // ── Glow ──
+        b.comment("=== Glow (see creatures through walls) ===",
+                        "=== 透视（隔墙看见生物轮廓）===")
+                .push("glow");
+        GLOW = b.comment(
+                "Enables the glow page. It uses vanilla's glowing effect, so the outline is drawn",
+                "by the game itself: occlusion, distance and shaders all behave normally.",
+                "The duration is chosen in the panel each time it is switched on.",
+                "启用透视页。用的是原版发光效果，轮廓由游戏自己绘制，遮挡、距离、光影都正常。",
+                "每次开启时在面板里选择持续时间。")
                 .define("enabled", true);
+        GLOW_TARGET = b.comment(
+                "all / hostile / friendly / custom.",
+                "There is no \"neutral\" option because Minecraft has no such category: the only",
+                "dependable marker is the Enemy interface (actively hostile). Use custom and list",
+                "what you want if you need something in between.",
+                "all / hostile / friendly / custom。",
+                "没有「中立」这一档，因为 Minecraft 没有这个分类——可靠的标记只有 Enemy 接口",
+                "（会主动敌对）。需要中间地带就用 custom 自己列。")
+                .define("target", "all");
+        GLOW_RANGE = b.comment("Radius in blocks.", "半径（格）")
+                .defineInRange("range", 48, 8, 128);
+        GLOW_CATEGORIES = b.comment(
+                "Only used when target = custom. Mob category names, e.g. monster, creature,",
+                "ambient, water_creature.",
+                "仅当 target = custom 时生效。生物类别名，如 monster / creature / ambient。")
+                .defineList("categories", new ArrayList<>(), o -> o instanceof String);
+        GLOW_ENTITIES = b.comment(
+                "Only used when target = custom. Exact entity ids, e.g. minecraft:cow.",
+                "仅当 target = custom 时生效。具体实体 id，如 minecraft:cow。")
+                .defineList("entities", new ArrayList<>(), o -> o instanceof String);
+        GLOW_HITBOX = b.comment(
+                "Draw the collision box of every glowing creature. Client-side only.",
+                "画出每个发光生物的碰撞箱。仅客户端。")
+                .define("showHitbox", false);
         b.pop();
 
         b.pop();

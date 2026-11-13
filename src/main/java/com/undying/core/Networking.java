@@ -52,6 +52,8 @@ public class Networking {
                 QuickActionMessage::encode, QuickActionMessage::decode, QuickActionMessage::handle);
         CHANNEL.registerMessage(9, CommandAuditMessage.class,
                 CommandAuditMessage::encode, CommandAuditMessage::decode, CommandAuditMessage::handle);
+        CHANNEL.registerMessage(10, GlowMessage.class,
+                GlowMessage::encode, GlowMessage::decode, GlowMessage::handle);
     }
 
     // ── S2C: open the creative item menu ──
@@ -400,5 +402,44 @@ public class Networking {
     /** Server thread. */
     public static void sendCommandAudit(ServerPlayer p, String text) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> p), new CommandAuditMessage(text));
+    }
+
+    // ── Glow ──
+
+    /**
+     * C2S: start the outline for N seconds, or stop it.
+     *
+     * <p>{@code seconds < 0} means stop. The client does not say which entities to outline —
+     * the server owns the scan, so a modified client can only ask for a duration.
+     */
+    public static class GlowMessage {
+        private final int seconds;
+
+        public GlowMessage(int seconds) {
+            this.seconds = seconds;
+        }
+
+        public static void encode(GlowMessage m, FriendlyByteBuf b) {
+            b.writeInt(m.seconds);
+        }
+
+        public static GlowMessage decode(FriendlyByteBuf b) {
+            return new GlowMessage(b.readInt());
+        }
+
+        public static void handle(GlowMessage m, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> {
+                ServerPlayer p = ctx.get().getSender();
+                if (p == null) return;
+                if (m.seconds < 0) Glow.stop(p, "", "");
+                else Glow.start(p, m.seconds);
+            });
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    /** Only called from the client thread. */
+    public static void sendGlow(int seconds) {
+        CHANNEL.sendToServer(new GlowMessage(seconds));
     }
 }

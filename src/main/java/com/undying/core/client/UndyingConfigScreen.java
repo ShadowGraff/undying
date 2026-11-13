@@ -73,6 +73,7 @@ public class UndyingConfigScreen extends Screen {
         add("flight", ModConfig.FLIGHT);
         add("quickControls", ModConfig.QUICK_CONTROLS);
         add("commandAudit", ModConfig.COMMAND_AUDIT);
+        add("glow", ModConfig.GLOW);
         add("domain", ModConfig.DOMAIN_ENABLED);
     }
 
@@ -107,12 +108,15 @@ public class UndyingConfigScreen extends Screen {
         int bottom = this.height - 40;
         this.addRenderableWidget(Button.builder(Component.translatable("undying.config.allow_list"),
                         b -> this.minecraft.setScreen(new DomainAllowScreen(this)))
-                .bounds(this.width / 2 - 155, bottom, 100, 20).build());
+                .bounds(this.width / 2 - 152, bottom, 72, 20).build());
+        this.addRenderableWidget(Button.builder(Component.translatable("undying.config.glow"),
+                        b -> this.minecraft.setScreen(new GlowScreen(this)))
+                .bounds(this.width / 2 - 75, bottom, 72, 20).build());
         this.addRenderableWidget(Button.builder(Component.translatable("undying.config.quick"),
                         b -> this.minecraft.setScreen(new QuickControlScreen(this)))
-                .bounds(this.width / 2 - 50, bottom, 100, 20).build());
+                .bounds(this.width / 2 + 2, bottom, 72, 20).build());
         this.addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
-                .bounds(this.width / 2 + 55, bottom, 100, 20).build());
+                .bounds(this.width / 2 + 79, bottom, 72, 20).build());
     }
 
     private Component label(Toggle t) {

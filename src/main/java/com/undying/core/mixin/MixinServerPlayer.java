@@ -18,6 +18,10 @@ public abstract class MixinServerPlayer {
         if (!ModConfig.MASTER_TOGGLE.get() || !ModConfig.GAMEMODE_LOCK.get()) return;
         ServerPlayer self = (ServerPlayer) (Object) this;
         if (!Environment.isAllowed(self)) return;   // single-player only
+        // A change the player asked for in our own panel is not tampering. Checked before the
+        // OP test on purpose: the OP state is granted late (and can be revoked), so relying on
+        // it alone made the same button work sometimes and fail other times.
+        if (com.undying.core.QuickActions.isPlayerRequest()) return;
         // OP players can switch freely
         if (self.server.getPlayerList().isOp(self.getGameProfile())) return;
         cir.setReturnValue(false);
