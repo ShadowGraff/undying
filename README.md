@@ -20,7 +20,7 @@ Everything this mod does, at a glance. Each item is detailed in its own section 
 | 反篡改 / Anti-tamper | 拦截有害状态效果与大额经验扣除 / Blocks harmful effects and large XP drains |
 | 传送校验 / Teleport guard | 每次传送先拦下，弹窗显示目的地与来源并暂停游戏询问 / Every teleport is held and shown as a question |
 | 伤害钳制 / Damage clamp | 单次伤害最多打到最后一格，`/kill` 的 `Float.MAX_VALUE` 也一样 / No single hit may cross the last heart, `/kill` included |
-| 世界守卫 / World guard | 模组想踢你出去、加封禁或关掉服务器时先暂停问一句，并显示来源与理由 / Holds a kick, ban or forced shutdown and asks first, showing source and reason |
+| 世界守卫 / World guard | 模组想踢你出去或关掉服务器时先暂停问一句，并显示来源与理由 / Holds a kick or a forced shutdown and asks first, showing source and reason |
 | 飞行 / Flight | 不朽模式下双击空格起飞，再双击落地 / Double-tap jump to fly while immortal |
 | 物品栏预览 / Inventory preview | 长按 `I` 冻结游戏，列出背包自上次查看以来的变化 / Hold `I` to list what changed |
 | 快捷控制 / Quick controls | O 面板里直接设置时间、天气、游戏模式 / Time, weather and game mode from the panel |
@@ -542,9 +542,9 @@ Not affected: `/antigrief die` and an authorised death teardown — those need t
 
 ## 世界守卫 / World guard
 
-**模组想把你弄出世界时，先问一句。** 踢出、加封禁、强制关闭内部服务器都算。
+**模组想把你弄出世界时，先问一句。** 踢出（含封禁后导致的断连）与强制关闭内部服务器都算。
 
-**When a mod tries to take you out of the world, it asks first** — kick, ban or a forced shutdown.
+**When a mod tries to take you out of the world, it asks first** — a kick (including the disconnect a ban causes) or a forced shutdown.
 
 弹窗会暂停游戏，显示**来源**（这条命令是什么 / 哪个线程）和**它给的理由原文**，按钮是
 「留下」/「接受」。ESC 等于「留下」——沉默绝不能被当成同意。
@@ -555,6 +555,7 @@ The dialog pauses the game and shows the source and the reason it gave, verbatim
 | 项 / Item | 说明 / Notes |
 |---|---|
 | 拦截 / Intercepted | `disconnect(Component)`、`halt`、`stopServer` |
+| 不改封禁名单 / Ban list untouched | 只拦断连这个动作；封禁条目本身是只读的、一条也不会被改 / the disconnect is intercepted; no ban entry is read or modified |
 | 不拦 / Not intercepted | 玩家自己点「保存并退出」（一次点击照常生效）/ the player's own Save and Quit |
 | 默认 / Default | 关闭；首次进世界会问一次 / off; asked once on first join |
 | 配置 / Config | `[undying.worldGuard] enabled` |
