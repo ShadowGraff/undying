@@ -598,6 +598,40 @@ active".
 
 ---
 
+## 关于常驻 / About keeping it installed
+
+**建议常驻。** 关掉总开关（`masterToggle`）之后，本模组不再介入任何游戏逻辑：不拦伤害、不改血量、
+不碰物品栏、不发任何封包。默认关闭的那些低频功能（指令审计、威胁扫描、世界守卫）在关闭状态下
+一次也不会运行。
+
+**Recommended as a permanent install.** With the master switch off, the mod does not touch game
+logic at all: no damage interception, no health writes, no inventory access, no packets. Features
+that are off by default (command audit, threat scan, world guard) do not run at all while off.
+
+**移除也是无害的。** 卸载模组后游戏逻辑没有任何残留：没有自定义方块、物品、维度或实体，也没有
+需要迁移的注册表项；存档可以原样用原版或别的整合包打开。
+
+**Removing it is also harmless.** Uninstalling leaves no trace in game logic — no custom blocks,
+items, dimensions or entities, and nothing in the registry to migrate. The save opens in vanilla or
+another modpack as it is.
+
+### 但磁盘上会留下这些文件 / What stays on disk
+
+| 路径 / Path | 内容 / What it is | 怎么处理 / What to do |
+|---|---|---|
+| `<存档>/_undying_backup/` | 玩家状态快照（`<uuid>.dat`，死亡回滚用） | 可以直接删；删了就是没有回滚点 |
+| `<存档>/_undying_backup/world/` | 世界备份副本（**存档救援模块，尚未发布**） | 同上；未启用时不会生成 |
+| `*.corrupt-<时间戳>` | 损坏文件的留底（发现坏档时改名保留） | 确认修好了再删；那是我们唯一的证据 |
+
+**我们不替你删数据。** 这不是免责声明，是设计选择：这些文件里装的都是你的存档，一个"顺手清理"
+的模组最容易顺手删掉别人想留的东西。
+
+**We do not delete your data.** That is a design choice, not a disclaimer: everything in those
+folders is your save, and a tool that "helpfully cleans up" is exactly the kind of tool that
+deletes the thing someone wanted to keep.
+
+---
+
 ## 联机 / Multiplayer
 
 **本模组不工作于联机环境，并主动阻止自身被用于联机。**
