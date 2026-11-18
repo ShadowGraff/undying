@@ -64,6 +64,10 @@ public final class PresentAsk {
         }
         if (!ModConfig.WORLD_GUARD_ASKED.get()) {
             askWorldGuard(mc);
+            return;
+        }
+        if (!ModConfig.WB_ASKED.get()) {
+            askWorldBackup(mc);
         }
     }
 
@@ -92,6 +96,33 @@ public final class PresentAsk {
             return;
         }
         mc.setScreen(new PresentAskScreen(PresentAsk::answerWorldGuard, "undying.wguard.ask"));
+    }
+
+    /**
+     * The save-rescue question.
+     *
+     * <p>Deliberately a yes/no and not a list of modes: the module currently ships one backup
+     * strategy, and offering a second choice that silently maps onto the first would be the kind
+     * of "configurable" that only creates support questions. The mode setting exists in the file
+     * for the next version.
+     */
+    private static void askWorldBackup(Minecraft mc) {
+        if (ModConfig.WORLD_BACKUP.get()) {
+            ModConfig.WB_ASKED.set(true);
+            ModConfig.save();
+            return;
+        }
+        mc.setScreen(new PresentAskScreen(PresentAsk::answerWorldBackup, "undying.wb.ask"));
+    }
+
+    private static void answerWorldBackup(boolean enable) {
+        try {
+            ModConfig.WB_ASKED.set(true);
+            if (enable) ModConfig.WORLD_BACKUP.set(true);
+            ModConfig.save();
+        } catch (Throwable t) {
+            ModLog.swallowed("PresentAsk.answerWorldBackup", t);
+        }
     }
 
     private static void answerWorldGuard(boolean enable) {

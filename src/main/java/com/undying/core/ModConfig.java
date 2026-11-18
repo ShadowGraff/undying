@@ -82,6 +82,12 @@ public class ModConfig {
     // ── Damage ceiling ──
     public static final ForgeConfigSpec.BooleanValue CLAMP_DAMAGE;
 
+    // ── World backup (save rescue) ──
+    public static final ForgeConfigSpec.BooleanValue WORLD_BACKUP;
+    public static final ForgeConfigSpec.IntValue WB_DEPTH;
+    public static final ForgeConfigSpec.IntValue WB_LIMIT_MB;
+    public static final ForgeConfigSpec.BooleanValue WB_ASKED;
+
     // ── World guard (kick / ban / forced shutdown) ──
     public static final ForgeConfigSpec.BooleanValue WORLD_GUARD;
     public static final ForgeConfigSpec.BooleanValue WORLD_GUARD_ASKED;
@@ -405,6 +411,37 @@ public class ModConfig {
                 "每个被标记的生物都会让客户端多渲染一遍，开销随「数量」涨，不随半径涨。",
                 "这里就是那道闸。除非你确实想连远处的都看见、并且不在乎帧数，否则别调大。")
                 .defineInRange("maxTargets", 32, 1, 400);
+        b.pop();
+
+        // ── World backup ──
+        b.comment("=== World backup (save rescue) ===",
+                        "=== 世界备份（存档救援）===")
+                .push("worldBackup");
+        WORLD_BACKUP = b.comment(
+                "Copies changed world files aside so the save can be rolled back to a moment.",
+                "This is the only feature that writes to disk on its own; it stays off until the",
+                "player says yes on first join. Removing the mod does not damage the world.",
+                "把改动过的世界文件另存一份，之后可以把存档回滚到某一刻。",
+                "这是唯一会自己写盘的功能，首次进世界问过之后才启用。",
+                "移除模组不会损坏世界。")
+                .define("enabled", false);
+        WB_DEPTH = b.comment(
+                "How many copies to keep per file (oldest is pruned first).",
+                "Lower = less disk, less history. 7 is about two hours of normal play.",
+                "每个文件保留几份副本（超了从最旧的删）。",
+                "越小越省盘、历史越短。7 份大约相当于两小时的正常游玩。")
+                .defineInRange("depth", 7, 1, 50);
+        WB_LIMIT_MB = b.comment(
+                "Total size limit for the backup folder, in MB. 0 = no limit.",
+                "When the limit is reached the oldest copies are pruned; the last copy of any",
+                "file is never deleted, and the run is skipped instead.",
+                "备份目录的总大小上限（MB）。0 = 不限。",
+                "达到上限时从最旧的副本开始清理；任何文件的最后一份永不删除，放不下就跳过本次。")
+                .defineInRange("limitMb", 1536, 0, 200_000);
+        WB_ASKED = b.comment(
+                "Whether the first-join question has been asked. Written automatically.",
+                "是否已在游戏内问过。自动写入，不要手改。")
+                .define("asked", false);
         b.pop();
 
         // ── World guard ──

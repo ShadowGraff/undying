@@ -21,6 +21,7 @@ Everything this mod does, at a glance. Each item is detailed in its own section 
 | 传送校验 / Teleport guard | 每次传送先拦下，弹窗显示目的地与来源并暂停游戏询问 / Every teleport is held and shown as a question |
 | 伤害钳制 / Damage clamp | 单次伤害最多打到最后一格，`/kill` 的 `Float.MAX_VALUE` 也一样 / No single hit may cross the last heart, `/kill` included |
 | 世界守卫 / World guard | 模组想踢你出去或关掉服务器时先暂停问一句，并显示来源与理由 / Holds a kick or a forced shutdown and asks first, showing source and reason |
+| 存档救援 / Save rescue | 把改动过的世界文件按版本另存，出事时回滚到某一刻；恢复前先演练、可撤销 / Keeps versions of changed world files so the save can be rolled back; rehearses first, can be undone |
 | 飞行 / Flight | 不朽模式下双击空格起飞，再双击落地 / Double-tap jump to fly while immortal |
 | 物品栏预览 / Inventory preview | 长按 `I` 冻结游戏，列出背包自上次查看以来的变化 / Hold `I` to list what changed |
 | 快捷控制 / Quick controls | O 面板里直接设置时间、天气、游戏模式 / Time, weather and game mode from the panel |
@@ -59,7 +60,7 @@ Everything this mod does, at a glance. Each item is detailed in its own section 
 
 | 功能 / Feature | 作用 / What it does |
 |---|---|
-| 配置界面 / Config screen | `O` 键打开，27 个开关，另有领域白名单、透视、快捷控制三页；键位可在「控制 → 按键绑定」里改 / Opened with `O`, twenty-seven switches plus three sub-pages |
+| 配置界面 / Config screen | `O` 键打开，28 个开关，另有领域白名单、透视、快捷控制、存档救援四页；键位可在「控制 → 按键绑定」里改 / Opened with `O`, twenty-eight switches plus four sub-pages |
 | 领域白名单 / Domain allow-list | 按类别勾选 + 按实体搜索勾选 / Category toggles plus a searchable entity list |
 | 语言 / Language | 界面随游戏语言切换；聊天中英并排；配置注释双语 / GUI follows the game language; chat shows both; bilingual config comments |
 | 物品栏提示 / Inventory prompt | 左下角非阻塞面板，`Y×3` 回滚 / `N×3` 忽略 / Non-blocking corner panel, `Y×3` to roll back, `N×3` to ignore |
@@ -154,8 +155,8 @@ current implementation:
 | 死亡锁拦截点 / Death-lock interception points | 12 |
 | 环境门禁调用点 / Environment gate call sites | 29（分布 19 个文件 / across 19 files） |
 | 自检探针 / Self-check probes | 10 |
-| 主要类 / Main classes | 102（不含 17 个 mixin / excluding the 17 mixins） |
-| 单元测试 / Unit tests | 216（25 个测试类 / 25 test classes） |
+| 主要类 / Main classes | 107（不含 17 个 mixin / excluding the 17 mixins） |
+| 单元测试 / Unit tests | 223（26 个测试类 / 26 test classes） |
 
 **一个死亡要真正发生，需要上述拦截点同时失效。** 每个点都在代码里独立实现，不共享同一个开关。
 
@@ -512,6 +513,37 @@ Config `[undying.glow]`; opened from `O` → "Outline...".
 
 ---
 
+## 存档救援 / Save rescue
+
+**在它坏之前，把世界按文件各留几份旧版；出事时回滚到某一刻。**
+
+**Keeps versions of changed world files, so the save can be rolled back to a moment.**
+
+它**不修坏档**。已经覆盖掉的数据谁都造不回来——这一层治的是"之前还有一份好的"。所以能不能救，
+取决于备份成不成立，不取决于模组多聪明。
+
+It does **not repair a broken save**. Overwritten data cannot be reconstructed by anything; what
+this layer provides is "there is still a copy from a moment ago".
+
+| 项 / Item | 说明 / Notes |
+|---|---|
+| 触发 / When | 世界里有玩家、距上次 ≥1 分钟、上一轮已结束；扫描在**后台线程** |
+| 存什么 / What | 只存**改动过**的文件（大小或 mtime 变了），每个文件留 `depth` 份（默认 7） |
+| 上限 / Limit | 总量默认 1536 MB；超了从最旧清理，**任何文件的最后一份永不删** |
+| 恢复 / Restore | 只在**世界关闭**时（主菜单）可用；先演练，再确认；被覆盖的文件会先另存，可撤销 |
+| 配置 / Config | `[undying.worldBackup] enabled / depth / limitMb` |
+
+⚠️ **一条硬规则**：空间不够时**拒绝本次备份**，而不是删掉某个文件的最后一版来腾地方。
+一个会把要保护的东西删掉来腾地方的备份工具，比没有更糟。
+
+⚠️ **A backup tool must never delete the thing it protects to make room.** When the limit cannot
+be met, the run is refused and nothing is removed.
+
+### 前 30 秒要发生什么
+
+首次进世界会问一次"要不要开启世界备份"。开启后一分钟内做第一份；之后每分钟看一眼有没有变化，
+没有变化就什么都不做（实测 250 MB 的世界扫描一次 68~102 ms，在后台，不占帧）。
+
 ## 伤害钳制 / Damage clamp
 
 **任何单次伤害都跨不过最后一格血。** 包括 `/kill`。
@@ -620,7 +652,7 @@ another modpack as it is.
 | 路径 / Path | 内容 / What it is | 怎么处理 / What to do |
 |---|---|---|
 | `<存档>/_undying_backup/` | 玩家状态快照（`<uuid>.dat`，死亡回滚用） | 可以直接删；删了就是没有回滚点 |
-| `<存档>/_undying_backup/world/` | 世界备份副本（存档救援模块，**已实现但尚未接入游戏**） | 同上；未接入前不会生成任何文件 |
+| `<存档>/_undying_backup/world/` | 世界备份副本（开启「存档救援」后才生成） | 同上；删掉就是没有回滚点，世界本身不受影响 |
 | `*.corrupt-<时间戳>` | 损坏文件的留底（发现坏档时改名保留） | 确认修好了再删；那是我们唯一的证据 |
 
 **我们不替你删数据。** 这不是免责声明，是设计选择：这些文件里装的都是你的存档，一个"顺手清理"
@@ -698,9 +730,9 @@ broken UI is more disruptive than an un-banned button), while the gate fails clo
 
 ### 配置界面 / Config screen
 
-`O` 键打开（默认键位，可在「控制 → 按键绑定 → Undying」里改）。27 个开关按窗口大小自动排开，状态用颜色区分；底部四个入口分别进入「领域白名单」「透视」「快捷控制」和关闭界面。所有改动即时写入 TOML，没有「保存」按钮——需要二次确认的勾选框是最容易被存错的东西。
+`O` 键打开（默认键位，可在「控制 → 按键绑定 → Undying」里改）。28 个开关按窗口大小自动排开，状态用颜色区分；底部五个入口分别进入「领域白名单」「透视」「快捷控制」「存档救援」和关闭界面。所有改动即时写入 TOML，没有「保存」按钮——需要二次确认的勾选框是最容易被存错的东西。
 
-Opened with `O` (a real key binding, so it appears under Controls → Key Binds → Undying and can be rebound). Twenty-seven switches, laid out to fit whatever window height they are given; the four buttons at the bottom open the domain allow-list editor, the outline page, the quick-controls page, or close the screen. Changes are written to the TOML immediately — there is no Save button, because a checkbox that needs a second confirmation is the thing that gets saved wrongly.
+Opened with `O` (a real key binding, so it appears under Controls → Key Binds → Undying and can be rebound). Twenty-eight switches, laid out to fit whatever window height they are given; the five buttons at the bottom open the domain allow-list editor, the outline page, the quick-controls page, the save-rescue page, or close the screen. Changes are written to the TOML immediately — there is no Save button, because a checkbox that needs a second confirmation is the thing that gets saved wrongly.
 
 ### 语言 / Language
 

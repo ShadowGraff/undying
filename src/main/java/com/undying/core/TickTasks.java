@@ -40,6 +40,11 @@ public final class TickTasks {
         SaveSnapshot.onTick(p);    // periodically capture and persist a snapshot
         checkOp(p, master);        // prevent OP from being revoked behind our back
 
+        // World backup: the decision runs once a second, the copying happens on a worker thread.
+        // Behind its own switch and behind the single-player gate, so nothing happens on a
+        // server someone else owns.
+        com.undying.core.backup.BackupScheduler.tick(p);
+
         // A granted flight permission has to be taken back when the switch goes off, or the
         // player keeps flying with the setting visibly disabled. Once a second is enough:
         // nothing about this is time-critical, and it is a field read on the other 19 ticks.

@@ -72,6 +72,7 @@ public class UndyingConfigScreen extends Screen {
         add("inventoryGuard", ModConfig.INVENTORY_GUARD);
         add("teleportGuard", ModConfig.TELEPORT_GUARD);
         add("worldGuard", ModConfig.WORLD_GUARD);
+        add("worldBackup", ModConfig.WORLD_BACKUP);
         add("flight", ModConfig.FLIGHT);
         add("quickControls", ModConfig.QUICK_CONTROLS);
         add("commandAudit", ModConfig.COMMAND_AUDIT);
@@ -105,13 +106,13 @@ public class UndyingConfigScreen extends Screen {
                     .bounds(x, y, w, h).build());
         }
 
-        // Bottom row: four buttons, sized to the window so that they cannot overlap each
-        // other on a narrow window either.
+        // Bottom row: five entries. Widths are computed from the window so they cannot run into
+        // each other on a narrow screen — the same rule the grid above follows.
         int bottom = ConfigLayout.bottomRowY(this.height);
         int gap = 4;
-        int total = Math.min(this.width - 20, 4 * 72 + 3 * gap);
-        int btnW = Math.max(40, (total - 3 * gap) / 4);
-        int x = (this.width - (btnW * 4 + gap * 3)) / 2;
+        int total = Math.min(this.width - 20, 5 * 64 + 4 * gap);
+        int btnW = Math.max(42, (total - 4 * gap) / 5);
+        int x = (this.width - (btnW * 5 + gap * 4)) / 2;
 
         this.addRenderableWidget(Button.builder(Component.translatable("undying.config.allow_list"),
                         b -> this.minecraft.setScreen(new DomainAllowScreen(this)))
@@ -123,6 +124,10 @@ public class UndyingConfigScreen extends Screen {
         x += btnW + gap;
         this.addRenderableWidget(Button.builder(Component.translatable("undying.config.quick"),
                         b -> this.minecraft.setScreen(new QuickControlScreen(this)))
+                .bounds(x, bottom, btnW, 20).build());
+        x += btnW + gap;
+        this.addRenderableWidget(Button.builder(Component.translatable("undying.config.backup"),
+                        b -> this.minecraft.setScreen(new BackupScreen(this)))
                 .bounds(x, bottom, btnW, 20).build());
         x += btnW + gap;
         this.addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
