@@ -154,8 +154,8 @@ current implementation:
 | 死亡锁拦截点 / Death-lock interception points | 12 |
 | 环境门禁调用点 / Environment gate call sites | 29（分布 19 个文件 / across 19 files） |
 | 自检探针 / Self-check probes | 10 |
-| 主要类 / Main classes | 88（不含 17 个 mixin / excluding the 17 mixins） |
-| 单元测试 / Unit tests | 131（15 个测试类 / 15 test classes） |
+| 主要类 / Main classes | 102（不含 17 个 mixin / excluding the 17 mixins） |
+| 单元测试 / Unit tests | 216（25 个测试类 / 25 test classes） |
 
 **一个死亡要真正发生，需要上述拦截点同时失效。** 每个点都在代码里独立实现，不共享同一个开关。
 
@@ -620,7 +620,7 @@ another modpack as it is.
 | 路径 / Path | 内容 / What it is | 怎么处理 / What to do |
 |---|---|---|
 | `<存档>/_undying_backup/` | 玩家状态快照（`<uuid>.dat`，死亡回滚用） | 可以直接删；删了就是没有回滚点 |
-| `<存档>/_undying_backup/world/` | 世界备份副本（**存档救援模块，尚未发布**） | 同上；未启用时不会生成 |
+| `<存档>/_undying_backup/world/` | 世界备份副本（存档救援模块，**已实现但尚未接入游戏**） | 同上；未接入前不会生成任何文件 |
 | `*.corrupt-<时间戳>` | 损坏文件的留底（发现坏档时改名保留） | 确认修好了再删；那是我们唯一的证据 |
 
 **我们不替你删数据。** 这不是免责声明，是设计选择：这些文件里装的都是你的存档，一个"顺手清理"
