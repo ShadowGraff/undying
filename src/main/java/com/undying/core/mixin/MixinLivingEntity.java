@@ -4,6 +4,7 @@ import com.undying.core.Const;
 import com.undying.core.DeathLock;
 import com.undying.core.Environment;
 import com.undying.core.ModConfig;
+import com.undying.core.ModLog;
 import com.undying.core.UndyingMod;
 import com.undying.core.Notify;
 import com.undying.core.Thorns;
@@ -128,6 +129,41 @@ public abstract class MixinLivingEntity {
             }
             p.level().broadcastEntityEvent(p, (byte) 35);
             cir.setReturnValue(false);
+        }
+    }
+
+    /**
+     * The damage ceiling: no single hit may cross the floor.
+     *
+     * <h3>Why this exists next to the gate below</h3>
+     * {@code undying$guardLethalDamage} refuses a hit once health is already at the floor, which
+     * is the right thing at the bottom but all-or-nothing everywhere else: a player standing at
+     * 20 health sees no bar movement at all. That reads as "damage is broken", and it makes a
+     * real leak impossible to spot.
+     *
+     * <p>This caps the number instead: the bar falls honestly and stops at the floor. It is
+     * also the layer that answers {@code /kill}, whose damage is {@code Float.MAX_VALUE} — a
+     * value no health value can be larger than, because health is a {@code float} too. See
+     * {@link com.undying.core.DamageClamp}.
+     *
+     * <p>The two checks that must stay: a pending {@code /antigrief die} and an authorised
+     * death teardown both need their damage to arrive intact, or the one way out of a world
+     * stops working.
+     */
+    @ModifyVariable(method = "m_6469_", at = @At("HEAD"), argsOnly = true, index = 2, remap = false)
+    private float undying$clampDamage(float amount) {
+        try {
+            if (!ModConfig.MASTER_TOGGLE.get() || !ModConfig.DEATH_LOCK.get()) return amount;
+            if (!ModConfig.CLAMP_DAMAGE.get()) return amount;
+            if (!((Object) this instanceof ServerPlayer p)) return amount;
+            if (!Environment.isAllowed(p)) return amount;   // single-player only
+            if (p.isDeadOrDying()) return amount;           // real teardown: do not interfere
+            if (DeathLock.isSuicidePending(p.getUUID())) return amount;
+            if (DeathLock.isGranted(p)) return amount;
+            return com.undying.core.DamageClamp.clamp(amount, p.getHealth(), Const.DEATH_LOCK_HEALTH);
+        } catch (Throwable t) {
+            ModLog.swallowed("MixinLivingEntity.clampDamage", t);
+            return amount;   // fail open: an unchanged amount is vanilla behaviour
         }
     }
 

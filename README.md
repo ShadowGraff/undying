@@ -19,6 +19,8 @@ Everything this mod does, at a glance. Each item is detailed in its own section 
 | 隐藏槽位 / Hidden slots | 隐形图腾、360° 守护神盾、隐藏盔甲，玩家不可见不可丢 / Invisible totem, ward shield, hidden armour — unseen and undroppable |
 | 反篡改 / Anti-tamper | 拦截有害状态效果与大额经验扣除 / Blocks harmful effects and large XP drains |
 | 传送校验 / Teleport guard | 每次传送先拦下，弹窗显示目的地与来源并暂停游戏询问 / Every teleport is held and shown as a question |
+| 伤害钳制 / Damage clamp | 单次伤害最多打到最后一格，`/kill` 的 `Float.MAX_VALUE` 也一样 / No single hit may cross the last heart, `/kill` included |
+| 世界守卫 / World guard | 模组想踢你出去、加封禁或关掉服务器时先暂停问一句，并显示来源与理由 / Holds a kick, ban or forced shutdown and asks first, showing source and reason |
 | 飞行 / Flight | 不朽模式下双击空格起飞，再双击落地 / Double-tap jump to fly while immortal |
 | 物品栏预览 / Inventory preview | 长按 `I` 冻结游戏，列出背包自上次查看以来的变化 / Hold `I` to list what changed |
 | 快捷控制 / Quick controls | O 面板里直接设置时间、天气、游戏模式 / Time, weather and game mode from the panel |
@@ -57,7 +59,7 @@ Everything this mod does, at a glance. Each item is detailed in its own section 
 
 | 功能 / Feature | 作用 / What it does |
 |---|---|
-| 配置界面 / Config screen | `O` 键打开，25 个开关，另有领域白名单、透视、快捷控制三页；键位可在「控制 → 按键绑定」里改 / Opened with `O`, twenty-five switches plus three sub-pages |
+| 配置界面 / Config screen | `O` 键打开，27 个开关，另有领域白名单、透视、快捷控制三页；键位可在「控制 → 按键绑定」里改 / Opened with `O`, twenty-seven switches plus three sub-pages |
 | 领域白名单 / Domain allow-list | 按类别勾选 + 按实体搜索勾选 / Category toggles plus a searchable entity list |
 | 语言 / Language | 界面随游戏语言切换；聊天中英并排；配置注释双语 / GUI follows the game language; chat shows both; bilingual config comments |
 | 物品栏提示 / Inventory prompt | 左下角非阻塞面板，`Y×3` 回滚 / `N×3` 忽略 / Non-blocking corner panel, `Y×3` to roll back, `N×3` to ignore |
@@ -146,14 +148,14 @@ current implementation:
 
 | 项目 / Item | 数量 / Count |
 |---|---|
-| Mixin 类 / Mixin classes | 14 |
-| 注入点 / Injection points | 22 |
-| 其中可取消原版流程 / Of which cancellable | 15 |
+| Mixin 类 / Mixin classes | 17 |
+| 注入点 / Injection points | 28 |
+| 其中可取消原版流程 / Of which cancellable | 18 |
 | 死亡锁拦截点 / Death-lock interception points | 11 |
 | 环境门禁调用点 / Environment gate call sites | 27（分布 18 个文件 / across 18 files） |
 | 自检探针 / Self-check probes | 10 |
-| 主要类 / Main classes | 84（不含 14 个 mixin / excluding the 14 mixins） |
-| 单元测试 / Unit tests | 118（13 个测试类 / 13 test classes） |
+| 主要类 / Main classes | 88（不含 17 个 mixin / excluding the 17 mixins） |
+| 单元测试 / Unit tests | 131（15 个测试类 / 15 test classes） |
 
 **一个死亡要真正发生，需要上述拦截点同时失效。** 每个点都在代码里独立实现，不共享同一个开关。
 
@@ -508,6 +510,74 @@ Config `[undying.glow]`; opened from `O` → "Outline...".
 
 ---
 
+## 伤害钳制 / Damage clamp
+
+**任何单次伤害都跨不过最后一格血。** 包括 `/kill`。
+
+**No single hit may cross the last heart** — `/kill` included.
+
+⚠️ 先说清楚为什么不是「把血量做得很高」：原版 `LivingEntity.kill()` 发的是 `Float.MAX_VALUE` 的伤害，
+而血量本身也是 `float`（`setHealth(float)` 对着 `float` 的最大血量做 clamp）。`Float.MAX_VALUE`
+已经是 float 能表示的最大值，所以「血量大于这一击」在 float 里**没有对应的数**——再大只有
+`Infinity`，而它会把血条、比较和 NBT 存档一起带坏。可行的等价做法是从另一边钳：把伤害限制在
+「当前血量 − 1」，任何数值都跨不过下限，血条和存档完全不动。
+
+⚠️ **Why not simply a huge health value:** vanilla `LivingEntity.kill()` sends
+`Float.MAX_VALUE` damage, and health is a `float` too. That constant is the largest float there
+is, so "health above the damage" has no representation — the only bigger value is `Infinity`,
+which breaks the HUD, comparisons and the save round-trip. Capping the damage reaches the same
+place from the other side: health stops at one heart, and nothing else changes.
+
+| 项 / Item | 说明 / Notes |
+|---|---|
+| 行为 / Behaviour | 血条如实下降，停在 1.0 / the bar falls honestly and stops at 1.0 |
+| 关闭后 / When off | 回到旧行为：致命一击整次拒绝，血条不动 / old all-or-nothing behaviour |
+| 配置 / Config | `[undying] clampDamage`（默认 true） |
+
+不在拦截范围：`/antigrief die`（唯一的自杀出口）与已授权的死亡收尾，它们的伤害必须原样到达。
+
+Not affected: `/antigrief die` and an authorised death teardown — those need their damage intact.
+
+---
+
+## 世界守卫 / World guard
+
+**模组想把你弄出世界时，先问一句。** 踢出、加封禁、强制关闭内部服务器都算。
+
+**When a mod tries to take you out of the world, it asks first** — kick, ban or a forced shutdown.
+
+弹窗会暂停游戏，显示**来源**（这条命令是什么 / 哪个线程）和**它给的理由原文**，按钮是
+「留下」/「接受」。ESC 等于「留下」——沉默绝不能被当成同意。
+
+The dialog pauses the game and shows the source and the reason it gave, verbatim. ESC means
+"stay": silence is never read as consent for something that closes the session.
+
+| 项 / Item | 说明 / Notes |
+|---|---|
+| 拦截 / Intercepted | `disconnect(Component)`、`halt`、`stopServer` |
+| 不拦 / Not intercepted | 玩家自己点「保存并退出」（一次点击照常生效）/ the player's own Save and Quit |
+| 默认 / Default | 关闭；首次进世界会问一次 / off; asked once on first join |
+| 配置 / Config | `[undying.worldGuard] enabled` |
+
+**它能说什么、不能说什么**：从拦截点看不出是哪个模组——那里只剩一个调用栈。所以弹窗只显示
+可核对的东西：这一 tick 是否由命令触发（命令原文与来源）、以及执行它的线程。**没有猜一个模组名。**
+
+**What it can and cannot say:** which mod did it is not knowable from the interception point —
+only a stack remains. So the dialog shows what is checkable: whether a command caused it this
+tick, and which thread ran it. It never invents a mod name.
+
+⚠️ **判据的已知漏洞**：区分「玩家要退出」和「模组偷偷关服」靠的是客户端开始拆世界的那一刻
+（`clearLevel` 打时间戳）。一个直接调用 `Minecraft.clearLevel` / `Minecraft.close` 的模组会被
+误判成玩家，从而不被询问。这一点写在这里而不是藏起来——另一种做法（全部询问）会让游戏变得难关，
+那比问题本身更糟。
+
+⚠️ **Known hole in the judgement:** player-initiated teardown is recognised by a timestamp set
+in `Minecraft.clearLevel`. A mod that calls `clearLevel` or `close` directly is therefore read as
+the player and is not questioned. Asking about everything would make the game hard to close,
+which is worse.
+
+---
+
 ## 自检 / Self-check
 
 自检以只读方式运行，包含 10 条探针，核对以下内容：
@@ -591,7 +661,7 @@ broken UI is more disruptive than an un-banned button), while the gate fails clo
 
 ### 配置界面 / Config screen
 
-`O` 键打开（默认键位，可在「控制 → 按键绑定 → Undying」里改）。25 个开关两列排开，状态用颜色区分；底部四个入口分别进入「领域白名单」「透视」「快捷控制」和关闭界面。所有改动即时写入 TOML，没有「保存」按钮——需要二次确认的勾选框是最容易被存错的东西。
+`O` 键打开（默认键位，可在「控制 → 按键绑定 → Undying」里改）。27 个开关按窗口大小自动排开，状态用颜色区分；底部四个入口分别进入「领域白名单」「透视」「快捷控制」和关闭界面。所有改动即时写入 TOML，没有「保存」按钮——需要二次确认的勾选框是最容易被存错的东西。
 
 Opened with `O` (a real key binding, so it appears under Controls → Key Binds → Undying and can be rebound). Twenty switches in two columns; the buttons at the bottom open the domain allow-list editor or close the screen. Changes are written to the TOML immediately — there is no Save button, because a checkbox that needs a second confirmation is the thing that gets saved wrongly.
 

@@ -57,6 +57,10 @@ public class Networking {
         CHANNEL.registerMessage(11, ConfigToggledMessage.class,
                 ConfigToggledMessage::encode, ConfigToggledMessage::decode,
                 ConfigToggledMessage::handle);
+        CHANNEL.registerMessage(12, AskKickMessage.class,
+                AskKickMessage::encode, AskKickMessage::decode, AskKickMessage::handle);
+        CHANNEL.registerMessage(13, KickAnswerMessage.class,
+                KickAnswerMessage::encode, KickAnswerMessage::decode, KickAnswerMessage::handle);
     }
 
     // ── S2C: open the creative item menu ──
@@ -480,5 +484,88 @@ public class Networking {
     /** Only called from the client thread. */
     public static void sendConfigToggled() {
         CHANNEL.sendToServer(new ConfigToggledMessage());
+    }
+
+    // ── World guard ──
+
+    /**
+     * S2C: someone wants to remove the player from the world — here is who and why.
+     *
+     * <p>Only text and an id travel. The decision stays on the server, so a modified client can
+     * answer "stay" but cannot invent the action that was intercepted.
+     */
+    public static class AskKickMessage {
+        private final long id;
+        private final String kind;
+        private final String source;
+        private final String reason;
+
+        public AskKickMessage(long id, String kind, String source, String reason) {
+            this.id = id;
+            this.kind = kind;
+            this.source = source;
+            this.reason = reason;
+        }
+
+        public static void encode(AskKickMessage m, FriendlyByteBuf b) {
+            b.writeLong(m.id);
+            b.writeUtf(m.kind == null ? "" : m.kind, 32);
+            b.writeUtf(m.source == null ? "" : m.source, 256);
+            b.writeUtf(m.reason == null ? "" : m.reason, 512);
+        }
+
+        public static AskKickMessage decode(FriendlyByteBuf b) {
+            return new AskKickMessage(b.readLong(), b.readUtf(32), b.readUtf(256), b.readUtf(512));
+        }
+
+        public static void handle(AskKickMessage m, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> {
+                if (ctx.get().getDirection().getReceptionSide().isClient()) {
+                    DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                            () -> () -> ClientHooks.openKickAsk(m.id, m.kind, m.source, m.reason));
+                }
+            });
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    /** C2S: the answer. {@code accept = true} means "do what you were about to do". */
+    public static class KickAnswerMessage {
+        private final long id;
+        private final boolean accept;
+
+        public KickAnswerMessage(long id, boolean accept) {
+            this.id = id;
+            this.accept = accept;
+        }
+
+        public static void encode(KickAnswerMessage m, FriendlyByteBuf b) {
+            b.writeLong(m.id);
+            b.writeBoolean(m.accept);
+        }
+
+        public static KickAnswerMessage decode(FriendlyByteBuf b) {
+            return new KickAnswerMessage(b.readLong(), b.readBoolean());
+        }
+
+        public static void handle(KickAnswerMessage m, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> {
+                ServerPlayer p = ctx.get().getSender();
+                if (p == null) return;
+                if (m.accept) KickGuard.accept(p, m.id);
+                else KickGuard.refuse(p, m.id);
+            });
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    public static void sendKickAsk(ServerPlayer p, KickGuard.Pending k) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> p),
+                new AskKickMessage(k.id, k.kind, k.source, k.reason));
+    }
+
+    /** Only called from the client thread. */
+    public static void sendKickAnswer(long id, boolean accept) {
+        CHANNEL.sendToServer(new KickAnswerMessage(id, accept));
     }
 }

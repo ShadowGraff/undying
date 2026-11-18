@@ -26,11 +26,22 @@ import java.util.function.Consumer;
 public class PresentAskScreen extends Screen {
 
     private final Consumer<Boolean> onAnswer;
+    /** Translation-key prefix, so one screen can ask more than one question. */
+    private final String prefix;
     private boolean answered = false;
 
     public PresentAskScreen(Consumer<Boolean> onAnswer) {
-        super(Component.translatable("undying.ask.title"));
+        this(onAnswer, "undying.ask");
+    }
+
+    /**
+     * @param prefix translation-key prefix; the screen reads {@code <prefix>.title},
+     *               {@code .body1..4}, {@code .enable} and {@code .later}
+     */
+    public PresentAskScreen(Consumer<Boolean> onAnswer, String prefix) {
+        super(Component.translatable(prefix + ".title"));
         this.onAnswer = onAnswer;
+        this.prefix = prefix;
     }
 
     @Override
@@ -39,12 +50,12 @@ public class PresentAskScreen extends Screen {
         int y = this.height / 2 + 46;
 
         this.addRenderableWidget(Button.builder(
-                        Component.translatable("undying.ask.enable"),
+                        Component.translatable(this.prefix + ".enable"),
                         b -> finish(true))
                 .bounds(cx - 155, y, 150, 20).build());
 
         this.addRenderableWidget(Button.builder(
-                        Component.translatable("undying.ask.later"),
+                        Component.translatable(this.prefix + ".later"),
                         b -> finish(false))
                 .bounds(cx + 5, y, 150, 20).build());
     }
@@ -61,19 +72,19 @@ public class PresentAskScreen extends Screen {
         g.drawCenteredString(this.font, this.title, cx, y, 0xFFFFFF);
         y += 28;
         g.drawCenteredString(this.font,
-                Component.translatable("undying.ask.body1"),
+                Component.translatable(this.prefix + ".body1"),
                 cx, y, 0xD0D0D0);
         y += 14;
         g.drawCenteredString(this.font,
-                Component.translatable("undying.ask.body2"),
+                Component.translatable(this.prefix + ".body2"),
                 cx, y, 0xD0D0D0);
         y += 24;
         g.drawCenteredString(this.font,
-                Component.translatable("undying.ask.body3"),
+                Component.translatable(this.prefix + ".body3"),
                 cx, y, 0xFFFFFF);
         y += 14;
         g.drawCenteredString(this.font,
-                Component.translatable("undying.ask.body4"),
+                Component.translatable(this.prefix + ".body4"),
                 cx, y, 0x909090);
 
         super.render(g, mouseX, mouseY, partialTick);

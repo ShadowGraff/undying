@@ -52,6 +52,7 @@ public class UndyingConfigScreen extends Screen {
     private void buildToggles() {
         add("masterToggle", ModConfig.MASTER_TOGGLE);
         add("deathLock", ModConfig.DEATH_LOCK);
+        add("damageClamp", ModConfig.CLAMP_DAMAGE);
         add("killBlocker", ModConfig.KILL_BLOCKER);
         add("gameModeLock", ModConfig.GAMEMODE_LOCK);
         add("cheatPerms", ModConfig.CHEAT_PERMS);
@@ -70,6 +71,7 @@ public class UndyingConfigScreen extends Screen {
         add("threatScan", ModConfig.THREAT_SCAN);
         add("inventoryGuard", ModConfig.INVENTORY_GUARD);
         add("teleportGuard", ModConfig.TELEPORT_GUARD);
+        add("worldGuard", ModConfig.WORLD_GUARD);
         add("flight", ModConfig.FLIGHT);
         add("quickControls", ModConfig.QUICK_CONTROLS);
         add("commandAudit", ModConfig.COMMAND_AUDIT);

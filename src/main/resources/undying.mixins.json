@@ -14,11 +14,14 @@
     "LivingEntityDeathTimerAccess",
     "MixinSynchedEntityDataHealth",
     "SynchedEntityDataOwnerAccess",
-    "MixinServerPlayerTeleport"
+    "MixinServerPlayerTeleport",
+    "MixinConnectionDisconnect",
+    "MixinMinecraftServerStop"
   ],
   "client": [
     "client.MixinTotemSoundMute",
     "client.MixinScreenMultiplayerBan",
+    "client.MixinMinecraftClearLevel",
     "MixinIntegratedServerLan"
   ],
   "server": []

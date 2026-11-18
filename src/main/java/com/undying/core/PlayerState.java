@@ -179,6 +179,17 @@ public final class PlayerState {
     /** Tick of the last accepted toggle; used to collapse a duplicate double-tap into one. */
     public int flightLastToggleTick;
 
+    // ══════════════ World guard ══════════════
+
+    /**
+     * An unanswered "someone wants to take you out of this world" question.
+     *
+     * <p>Kept here rather than in {@link KickGuard} for the usual reason: every way of leaving a
+     * world goes through {@link #clear(UUID)}, so a question cannot survive the session it was
+     * asked in.
+     */
+    public KickGuard.Pending pendingKick;
+
     // ══════════════ Glow ══════════════
 
     /** Whether the outline feature is currently on for this player. */

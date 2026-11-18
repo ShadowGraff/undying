@@ -56,8 +56,18 @@ public final class PresentAsk {
     }
 
     private static void ask(Minecraft mc) {
-        // Already answered once: never ask again.
-        if (ModConfig.THREAT_SCAN_ASKED.get()) return;
+        // One question per world join. Two dialogs stacked on top of each other read as an
+        // interrogation, and the second answer would be given without reading the text.
+        if (!ModConfig.THREAT_SCAN_ASKED.get()) {
+            askThreatScan(mc);
+            return;
+        }
+        if (!ModConfig.WORLD_GUARD_ASKED.get()) {
+            askWorldGuard(mc);
+        }
+    }
+
+    private static void askThreatScan(Minecraft mc) {
 
         // Enabled by hand in the config: respect that and just record the question as done,
         // rather than nagging someone who already made the decision.
@@ -68,6 +78,30 @@ public final class PresentAsk {
         }
 
         mc.setScreen(new PresentAskScreen(PresentAsk::answer));
+    }
+
+    /**
+     * The world guard is off by default (see its config comment), so the only way a player ever
+     * finds it is being told it exists. Asked once, then never again — and "asked" is recorded
+     * either way, so ESC is a decision rather than a snooze.
+     */
+    private static void askWorldGuard(Minecraft mc) {
+        if (ModConfig.WORLD_GUARD.get()) {
+            ModConfig.WORLD_GUARD_ASKED.set(true);
+            ModConfig.save();
+            return;
+        }
+        mc.setScreen(new PresentAskScreen(PresentAsk::answerWorldGuard, "undying.wguard.ask"));
+    }
+
+    private static void answerWorldGuard(boolean enable) {
+        try {
+            ModConfig.WORLD_GUARD_ASKED.set(true);
+            if (enable) ModConfig.WORLD_GUARD.set(true);
+            ModConfig.save();
+        } catch (Throwable t) {
+            ModLog.swallowed("PresentAsk.answerWorldGuard", t);
+        }
     }
 
     private static void answer(boolean enable) {

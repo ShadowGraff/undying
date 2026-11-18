@@ -47,6 +47,19 @@ public class ClientHooks {
                 new com.undying.core.client.InventoryPreviewScreen(pending, hasBaseline, rows));
     }
 
+    /**
+     * Ask the client to show the "someone wants to take you out of this world" question.
+     *
+     * <p>Like the teleport question, it replaces whatever screen is open. That is deliberate
+     * here too: the server is holding a cancel for an action that has already been attempted,
+     * and waiting for the player to close a chest would mean the interruption happens later,
+     * possibly during something that cannot be interrupted as cleanly.
+     */
+    public static void openKickAsk(long id, String kind, String source, String reason) {
+        net.minecraft.client.Minecraft.getInstance().setScreen(
+                new com.undying.core.client.KickAskScreen(id, kind, source, reason));
+    }
+
     /** One command just ran; put it in the corner window. */
     public static void showCommandAudit(String text) {
         com.undying.core.client.CommandAuditHud.push(text);

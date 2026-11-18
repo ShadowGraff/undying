@@ -79,6 +79,13 @@ public class ModConfig {
     public static final ForgeConfigSpec.BooleanValue GLOW_HITBOX;
     public static final ForgeConfigSpec.IntValue GLOW_MAX;
 
+    // ── Damage ceiling ──
+    public static final ForgeConfigSpec.BooleanValue CLAMP_DAMAGE;
+
+    // ── World guard (kick / ban / forced shutdown) ──
+    public static final ForgeConfigSpec.BooleanValue WORLD_GUARD;
+    public static final ForgeConfigSpec.BooleanValue WORLD_GUARD_ASKED;
+
     static {
         ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
         b.push("undying");
@@ -89,6 +96,18 @@ public class ModConfig {
                         "总开关：关闭=普通模式，开启=不朽模式")
                 .define("masterToggle", true);
         DEATH_LOCK = b.comment("Prevent death", "防止死亡").define("deathLock", true);
+        CLAMP_DAMAGE = b.comment(
+                "Cap every single hit at (current health - 1), so no damage value can cross the",
+                "floor. Answers /kill, whose damage is Float.MAX_VALUE - the largest float there",
+                "is, and health is a float too, so \"health above the damage\" cannot be expressed.",
+                "Off = the old all-or-nothing behaviour (a lethal hit is refused entirely, so the",
+                "bar never moves). On = the bar falls honestly and stops at one heart.",
+                "把每一次伤害都钳在（当前血量 - 1），任何数值都跨不过下限。",
+                "这就是对 /kill 的答案：它的伤害是 Float.MAX_VALUE——float 能表示的最大值，",
+                "而血量也是 float，所以「血量大于伤害」在 float 里写不出来。",
+                "关闭 = 旧行为（致命一击整次拒绝，血条完全不动）。",
+                "开启 = 血条如实下降，停在最后一格。")
+                .define("clampDamage", true);
         KILL_BLOCKER = b.comment("Block /kill command", "拦截 /kill 指令").define("killBlocker", true);
         GAMEMODE_LOCK = b.comment("Lock game mode", "锁定游戏模式").define("gameModeLock", true);
         CHEAT_PERMS = b.comment("Auto-grant OP", "自动授予 OP").define("cheatPerms", true);
@@ -386,6 +405,28 @@ public class ModConfig {
                 "每个被标记的生物都会让客户端多渲染一遍，开销随「数量」涨，不随半径涨。",
                 "这里就是那道闸。除非你确实想连远处的都看见、并且不在乎帧数，否则别调大。")
                 .defineInRange("maxTargets", 32, 1, 400);
+        b.pop();
+
+        // ── World guard ──
+        b.comment("=== World guard (kick / ban / forced shutdown) ===",
+                        "=== 世界守卫（踢出 / 封禁 / 强制关闭）===")
+                .push("worldGuard");
+        WORLD_GUARD = b.comment(
+                "When a mod tries to disconnect the player or stop the integrated server, the game",
+                "pauses and asks first, showing who asked and what reason they gave.",
+                "Off by default: a guard that answers a question with a paused screen is",
+                "intrusive, and being kicked out of a world is rare. Turn it on when it is not.",
+                "当模组试图把玩家踢出世界、或强制关闭内部服务器时，游戏暂停并先问一句，",
+                "同时显示是谁发起的、给的什么理由。",
+                "默认关闭：用暂停画面回答一个很少发生的问题是打扰。遇上了再打开。",
+                "Not hooked: the player's own quit path. Saving and quitting still works in one",
+                "click; only a stop that did not come from the player is questioned.",
+                "不拦玩家自己的退出：保存并退出照常一次点击完成，只询问不是玩家发起的停服。")
+                .define("enabled", false);
+        WORLD_GUARD_ASKED = b.comment(
+                "Whether the one-time in-game question has been shown. Written automatically.",
+                "是否已在游戏内问过一次。自动写入，不要手改。")
+                .define("asked", false);
         b.pop();
 
         b.pop();
