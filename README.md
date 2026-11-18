@@ -151,8 +151,8 @@ current implementation:
 | Mixin 类 / Mixin classes | 17 |
 | 注入点 / Injection points | 28 |
 | 其中可取消原版流程 / Of which cancellable | 18 |
-| 死亡锁拦截点 / Death-lock interception points | 11 |
-| 环境门禁调用点 / Environment gate call sites | 27（分布 18 个文件 / across 18 files） |
+| 死亡锁拦截点 / Death-lock interception points | 12 |
+| 环境门禁调用点 / Environment gate call sites | 29（分布 19 个文件 / across 19 files） |
 | 自检探针 / Self-check probes | 10 |
 | 主要类 / Main classes | 88（不含 17 个 mixin / excluding the 17 mixins） |
 | 单元测试 / Unit tests | 131（15 个测试类 / 15 test classes） |
@@ -206,6 +206,7 @@ Here is where the interception points sit — this is why it is hard to route ar
 | 9 | 隐藏盔甲 / Hidden armour | `LivingEntity.getArmorValue` | `@Inject` RETURN，可取消 |
 | 10 | 图腾补挂 / Totem injection | `LivingEntity.checkTotemDeathProtection` | `@Inject` HEAD |
 | 11 | 图腾归还 / Totem restore | `LivingEntity.checkTotemDeathProtection` | `@Inject` RETURN |
+| 12 | 伤害钳制 / Damage ceiling | `LivingEntity.hurt` | `@ModifyVariable` |
 
 | # | 拦截点 / Interception point | 目标方法 / Target | 类型 / Kind |
 |---|---|---|---|
@@ -220,12 +221,13 @@ Here is where the interception points sit — this is why it is hard to route ar
 | 9 | Hidden armour | `LivingEntity.getArmorValue` | `@Inject` RETURN, cancellable |
 | 10 | Totem injection | `LivingEntity.checkTotemDeathProtection` | `@Inject` HEAD |
 | 11 | Totem restore | `LivingEntity.checkTotemDeathProtection` | `@Inject` RETURN |
+| 12 | Damage ceiling | `LivingEntity.hurt` | `@ModifyVariable` |
 
-**11 个注入点，其中 6 个可取消原版流程（第 1、2、6、7、8、9 行）。** 另有 3 处 `@ModifyVariable`（第 3、4、5 行）改写传入的血量值，属于改值而非取消，不计入。要真正杀死玩家，这些点必须**同时**失效 —— 这就是「四层机制」背后的实际规模。
+**死亡锁共 12 个拦截点，其中 6 个可取消原版流程（第 1、2、6、7、8、9 行）。** 另有 4 处 `@ModifyVariable`（第 3、4、5、12 行）改写传入的数值，属于改值而非取消，不计入可取消那一栏。要真正杀死玩家，这些点必须**同时**失效 —— 这就是「四层机制」背后的实际规模。
 
-**11 injection points, 6 of which can cancel vanilla's flow (rows 1, 2, 6, 7, 8, 9).** The three
-`@ModifyVariable` points (rows 3, 4, 5) rewrite the incoming health value rather than cancelling
-the call, so they are not counted as cancellable. For a death to succeed, all of them must fail
+**The death lock has 12 interception points, 6 of which can cancel vanilla's flow (rows 1, 2, 6, 7,
+8, 9).** The four `@ModifyVariable` points (rows 3, 4, 5, 12) rewrite an incoming value rather than
+cancelling the call, so they are not counted as cancellable. For a death to succeed, all of them must fail
 *simultaneously* — that is the actual scale behind "four mechanisms".
 
 下面是这些拦截点**各自负责什么**：
@@ -625,9 +627,9 @@ Matching displayed text fails on any non-English client.
 
 ### 2. 功能入口门禁 / Feature entry-point gate
 
-`Environment.isAllowed(...)` 在 20 处被调用，分布在 14 个文件中：聊天触发词、进入世界、每 tick 任务、指令、物品交互，以及所有可作用于 `ServerPlayer` 的 mixin 注入点。
+`Environment.isAllowed(...)` 在 29 处被调用，分布在 19 个文件中：聊天触发词、进入世界、每 tick 任务、指令、物品交互，以及所有可作用于 `ServerPlayer` 的 mixin 注入点。
 
-`Environment.isAllowed(...)` is consulted at 20 call sites across 14 files: chat triggers, world
+`Environment.isAllowed(...)` is consulted at 29 call sites across 19 files: chat triggers, world
 join, per-tick work, commands, item interaction, and every mixin injector that can affect a
 `ServerPlayer`.
 
@@ -664,7 +666,7 @@ broken UI is more disruptive than an un-banned button), while the gate fails clo
 
 `O` 键打开（默认键位，可在「控制 → 按键绑定 → Undying」里改）。27 个开关按窗口大小自动排开，状态用颜色区分；底部四个入口分别进入「领域白名单」「透视」「快捷控制」和关闭界面。所有改动即时写入 TOML，没有「保存」按钮——需要二次确认的勾选框是最容易被存错的东西。
 
-Opened with `O` (a real key binding, so it appears under Controls → Key Binds → Undying and can be rebound). Twenty switches in two columns; the buttons at the bottom open the domain allow-list editor or close the screen. Changes are written to the TOML immediately — there is no Save button, because a checkbox that needs a second confirmation is the thing that gets saved wrongly.
+Opened with `O` (a real key binding, so it appears under Controls → Key Binds → Undying and can be rebound). Twenty-seven switches, laid out to fit whatever window height they are given; the four buttons at the bottom open the domain allow-list editor, the outline page, the quick-controls page, or close the screen. Changes are written to the TOML immediately — there is no Save button, because a checkbox that needs a second confirmation is the thing that gets saved wrongly.
 
 ### 语言 / Language
 
@@ -717,11 +719,11 @@ inventory-change threshold and counting, the three-press confirmation, the switc
 screen's grid layout, report-file rotation, and mod-jar resource parsing and classification. The Forge toolchain is deliberately excluded from the test
 classpath, so tests run without provisioning the game.
 
-**这层覆盖不到的东西要说清楚**：19 个注入点、图形界面、以及任何需要真实 Forge 运行时对象的
+**这层覆盖不到的东西要说清楚**：28 个注入点、图形界面、以及任何需要真实 Forge 运行时对象的
 代码（`IModFile`、`SecureJar`、mixin 类），单测通过都不构成它们能工作的证据。
 上一版有 10 个用例全绿、生产环境却 100% 失效，原因正是测试用的是真实文件系统上的真实文件。
 
-**What that does not cover**: the 19 injection points, the GUI, and anything that touches real
+**What that does not cover**: the 28 injection points, the GUI, and anything that touches real
 Forge runtime objects (`IModFile`, `SecureJar`, mixin classes). A green test run is not evidence
 that those work. The previous release shipped ten passing tests on top of a feature that failed
 on every machine in production: the tests used real files on a real filesystem, which was the one
