@@ -238,6 +238,34 @@ public final class TeleportGuard {
         }
     }
 
+    /**
+     * A teleport this mod performs on its own behalf — currently only the void rescue.
+     *
+     * <h3>Why this is not a public bypass</h3>
+     * The rescue used to call {@code teleportTo} directly, which is one of the methods this guard
+     * hooks, so the rescue <b>asked the player whether to save them from the void</b>. Measured:
+     * falling below y=-100 produced a teleport question whose only honest answer was "yes, save
+     * me". Escaping it meant staying in the void and being asked again.
+     *
+     * <p>A general {@code setBypass(true)} would hand the same hole to every other mod in the
+     * process, so the bypass is private and reachable only through this package-private method,
+     * which nothing outside {@code com.undying.core} can name.
+     */
+    static boolean rescueTeleport(ServerPlayer p, ServerLevel level,
+                                  double x, double y, double z, float yaw, float pitch) {
+        if (p == null || level == null) return false;
+        BYPASS.set(true);
+        try {
+            p.teleportTo(level, x, y, z, yaw, pitch);
+            return true;
+        } catch (Throwable t) {
+            ModLog.swallowed("TeleportGuard.rescueTeleport", t);
+            return false;
+        } finally {
+            BYPASS.set(false);
+        }
+    }
+
     /** Whether this player currently has an unanswered question. */
     public static boolean hasPending(ServerPlayer p) {
         return p != null && PlayerState.of(p).pendingTeleport != null;

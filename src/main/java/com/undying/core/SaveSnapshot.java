@@ -39,6 +39,9 @@ public final class SaveSnapshot {
 
     /** Minimum interval (in ticks) between two restores for the same player, so we cannot
      *  end up trading blows with an external implementation every tick */
+    /** After this many ineffective attempts, stop trying for this life. */
+    private static final int MAX_RESTORE_ATTEMPTS = 3;
+
     private static final int RESTORE_COOLDOWN = 20;
 
     // ════════════════════════════════════════════════════════════
@@ -168,11 +171,43 @@ public final class SaveSnapshot {
 
         boolean lowHp = p.getHealth() <= 0.0F;
         boolean dying = p.isDeadOrDying();
-        boolean gone = p.isRemoved() && undying$destructiveRemoval(p.getRemovalReason());
-        if (!(lowHp || dying || gone)) return;
+        boolean removed = p.isRemoved();
+        boolean gone = removed && undying$destructiveRemoval(p.getRemovalReason());
+
+        PlayerState state = PlayerState.of(p);
+
+        // Healthy tick: forget past failures, so the next real incident gets a full budget again.
+        if (!(lowHp || dying || gone)) {
+            state.restoreAttempts = 0;
+            state.restoreGaveUp = false;
+            return;
+        }
+        if (state.restoreGaveUp) return;
 
         long now = p.server.getTickCount();
-        PlayerState state = PlayerState.of(p);
+
+        // ── Is this even recoverable? ──
+        //
+        // An entity removed with KILLED/DISCARDED is gone from the level. Writing NBT back into it
+        // does not put it back: the client keeps a ghost, the server keeps a removed entity, and
+        // every later tick sees the same "removed" condition and tries again. Measured: six
+        // restores in a row, backing off to the 10 s cap, never converging.
+        //
+        // The honest answer is to stop and say so. Restoring is the wrong tool for this failure;
+        // respawn or rejoining the world is the right one.
+        if (removed && undying$destructiveRemoval(p.getRemovalReason())) {
+            state.restoreGaveUp = true;
+            IntegrityGuard.LOGGER.warn(
+                    "[snapshot] not recoverable: entity already removed (reason={}), restore skipped",
+                    p.getRemovalReason());
+            Msg.warn(p, "snapshot")
+                    .bi("玩家实体已从世界移除，快照无法救回",
+                            "The player entity was removed from the world; a snapshot cannot bring it back")
+                    .dim("退出并重进世界（或重生）才是正确做法 / quit and rejoin, or respawn")
+                    .send();
+            return;
+        }
+
         // lastRestoreTick == 0 means "never restored", in which case the cooldown is skipped
         if (state.lastRestoreTick != 0L
                 && now - state.lastRestoreTick < currentCooldown(p.getUUID())) return;
@@ -187,20 +222,40 @@ public final class SaveSnapshot {
         // time — the exact hammering this cooldown exists to prevent.
         state.lastRestoreTick = now;
 
-        if (restored) {
-            int n = ++state.restoreCount;
+        // ── Did the restore actually fix anything? ──
+        //
+        // Success used to mean "apply() returned without throwing". That counted writes which
+        // changed nothing as successes, so the backoff never grew and the loop never ended.
+        boolean effective = restored
+                && p.getHealth() > 0.0F
+                && !p.isDeadOrDying()
+                && !p.isRemoved();
 
-            // ⚠️ Record which condition actually held.
-            //    Health drained to zero / flagged as dying / entity removed outright are
-            //    three completely different things with completely different responses.
-            //    We once guessed wrong for a whole round because this information was missing.
-            IntegrityGuard.LOGGER.warn(
-                    "[snapshot] reason: health={} lowHp={} isDeadOrDying={} isRemoved={} removalReason={}",
-                    hpBefore, lowHp, dying, gone, reasonBefore);
-
-            Msg.fin(p, "snapshot").bi("状态已被破坏，已从快照还原", "State was destroyed; restored from snapshot")
-                    .dim("(" + n + "x)").send();
+        if (!effective) {
+            if (++state.restoreAttempts >= MAX_RESTORE_ATTEMPTS) {
+                state.restoreGaveUp = true;
+                Msg.warn(p, "snapshot")
+                        .bi("多次尝试后仍无法恢复，已停止自动还原",
+                                "Automatic restore gave up after repeated failures")
+                        .dim("请退出并重进世界 / quit and rejoin the world")
+                        .send();
+            }
+            return;
         }
+
+        state.restoreAttempts = 0;
+        int n = ++state.restoreCount;
+
+        // ⚠️ Record which condition actually held.
+        //    Health drained to zero / flagged as dying / entity removed outright are
+        //    three completely different things with completely different responses.
+        //    We once guessed wrong for a whole round because this information was missing.
+        IntegrityGuard.LOGGER.warn(
+                "[snapshot] reason: health={} lowHp={} isDeadOrDying={} isRemoved={} removalReason={}",
+                hpBefore, lowHp, dying, gone, reasonBefore);
+
+        Msg.fin(p, "snapshot").bi("状态已被破坏，已从快照还原", "State was destroyed; restored from snapshot")
+                .dim("(" + n + "x)").send();
     }
 
     /**

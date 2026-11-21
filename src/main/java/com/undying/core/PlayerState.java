@@ -192,6 +192,15 @@ public final class PlayerState {
 
     // ══════════════ Glow ══════════════
 
+    /** Tick of the last void rescue, so a failing rescue cannot re-fire every tick. */
+    public int lastVoidRescueTick;
+
+    /** Restore attempts since the last healthy tick; failures and successes both count. */
+    public int restoreAttempts;
+
+    /** Set once automatic restore has stopped for this life, so it stops shouting and stops trying. */
+    public boolean restoreGaveUp;
+
     /** Whether the outline feature is currently on for this player. */
     public boolean glowActive;
 

@@ -254,9 +254,9 @@ alive while attempting removal every 50 ms. Refusing the damage at the entry poi
 path for dimension changes and respawns; intercepting it produces two entities for the same
 player and subsequently a null-pointer exception in the chunk manager.
 
-**解除死亡锁的方式：**`/antigrief die`，或聊天框自杀触发词。该路径不经过死亡锁，使其始终可用。
+**解除死亡锁的方式：**`/antigrief die`（**只接受聊天栏输入**：命令方块、函数、其他模组的 `performCommand` 一律拒绝），或聊天框自杀触发词。该路径不经过死亡锁，使其始终可用。
 
-**Releasing the death lock:** `/antigrief die`, or the suicide chat trigger. This path bypasses
+**Releasing the death lock:** `/antigrief die` (chat input only), or the suicide chat trigger. This path bypasses
 the death lock so that it remains available at all times.
 
 ### 隐藏槽位 / Hidden slots
@@ -568,9 +568,9 @@ place from the other side: health stops at one heart, and nothing else changes.
 | 关闭后 / When off | 回到旧行为：致命一击整次拒绝，血条不动 / old all-or-nothing behaviour |
 | 配置 / Config | `[undying] clampDamage`（默认 true） |
 
-不在拦截范围：`/antigrief die`（唯一的自杀出口）与已授权的死亡收尾，它们的伤害必须原样到达。
+不在拦截范围：`/antigrief die`（唯一的自杀出口，**只接受聊天栏输入**）与已授权的死亡收尾，它们的伤害必须原样到达。
 
-Not affected: `/antigrief die` and an authorised death teardown — those need their damage intact.
+Not affected: `/antigrief die` (chat input only) and an authorised death teardown — those need their damage intact.
 
 ---
 
@@ -629,6 +629,19 @@ The result is reported explicitly, including when the result is "protection is n
 active".
 
 ---
+
+### 一个刻意的收紧 / A deliberate tightening
+
+`/antigrief die` 是"随便怎么都能退出世界"的逃生口，所以它也是别人最想借用的刀。从 1.9.1 起，
+它**只认聊天栏输入**：命令方块、数据包函数、以及其它模组通过命令分发器代跑的同名命令，都会被拒绝并
+提示"只接受玩家在聊天栏输入的命令"。
+
+判断依据是网络层：玩家的命令一定经过 `handleChatCommand`，代跑的命令不经过。这不是权限等级，
+而是"这一 tick 有没有真人敲键盘"。
+
+**Why:** the escape hatch had to work with every protection off, which made it the cheapest way for
+any code in the same process to drive a real death. It now requires the command to have arrived as
+a chat packet; a dispatcher call from another mod leaves no such mark.
 
 ## 关于常驻 / About keeping it installed
 

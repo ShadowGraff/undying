@@ -116,7 +116,25 @@ public class IntegrityGuard {
 
         UUID id = p.getUUID();
         PlayerState state = PlayerState.find(id);
-        if (state == null || state.configSnapshot == null) return false;
+
+        // ── Rebuild rather than stand down ──
+        //
+        // The old early return here was the whole of "one call turns protection off": anything
+        // able to clear the player state (our own death cleanup, or another mod calling
+        // PlayerState.clear) left the guard with nothing to compare against, and it then reported
+        // "nothing wrong" for the rest of the session — including in the self-check, which read
+        // the same null and concluded the switches were fine.
+        //
+        // Rebuilding is safe: the snapshot is a record of what the player had enabled, and a
+        // missing record means "we do not know", not "everything is off".
+        if (state == null) {
+            state = PlayerState.of(p);
+            LOGGER.warn("[integrity] player state was missing; rebuilt from current config");
+        }
+        if (state.configSnapshot == null) {
+            state.configSnapshot = new ConfigSnapshot();
+            LOGGER.warn("[integrity] protection baseline was missing; re-captured (was it cleared?)");
+        }
         ConfigSnapshot snap = state.configSnapshot;
 
         boolean tampered = false;

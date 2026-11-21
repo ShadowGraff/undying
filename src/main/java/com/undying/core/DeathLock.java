@@ -50,9 +50,29 @@ public final class DeathLock {
         return true;
     }
 
-    /** Mark that "this player is going through our own suicide channel" */
-    public static void markSuicide(UUID id) {
-        if (id != null) PlayerState.of(id).pendingSuicide = true;
+    /**
+     * Arm the suicide channel — <b>only from a player-typed command</b>.
+     *
+     * <h3>Why the guard is here and not in the command</h3>
+     * {@code /antigrief die} has no permission requirement on purpose: it is the way out of a world
+     * when everything else is disabled. That also made it the cheapest kill in the mod — three
+     * lines of reflection-free code could run it through the command dispatcher
+     * ({@code getDispatcher().parse("antigrief die", source)} + {@code performCommand}) with no
+     * player involved, and the death lock would accept the resulting flag as the player's own
+     * decision. Measured consequence: the entity was removed, the client kept it, and the snapshot
+     * loop spent minutes trying to restore something that no longer existed.
+     *
+     * <p>So the flag can only be armed during a tick in which a chat command actually arrived.
+     * A command block, a function, or another mod's {@code performCommand} all leave no stamp and
+     * are refused.
+     *
+     * @return false when the caller was not a player typing in chat
+     */
+    public static boolean markSuicideFromCommand(ServerPlayer p) {
+        if (p == null || p.server == null) return false;
+        if (!PlayerCommandMark.chatCommandThisTick(p.server.getTickCount())) return false;
+        PlayerState.of(p.getUUID()).pendingSuicide = true;
+        return true;
     }
 
     /**

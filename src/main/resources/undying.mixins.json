@@ -16,6 +16,7 @@
     "SynchedEntityDataOwnerAccess",
     "MixinServerPlayerTeleport",
     "MixinConnectionDisconnect",
+    "MixinConnectionChatCommand",
     "MixinMinecraftServerStop"
   ],
   "client": [

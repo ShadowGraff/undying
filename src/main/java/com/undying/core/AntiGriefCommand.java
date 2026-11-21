@@ -29,7 +29,15 @@ public final class AntiGriefCommand {
         // player leave a world even when everything else is disabled.
         root.then(Commands.literal("die").executes(ctx -> {
             ServerPlayer p = ctx.getSource().getPlayerOrException();
-            DeathLock.markSuicide(p.getUUID());
+
+            // Only a real chat command may open this door. See DeathLock.markSuicideFromCommand:
+            // without the check, any mod in the process could run this through the dispatcher.
+            if (!DeathLock.markSuicideFromCommand(p)) {
+                Msg.warn(p, UndyingMod.TAG)
+                        .bi("只接受玩家在聊天栏输入的命令", "Only a command typed in chat is accepted")
+                        .send();
+                return 0;
+            }
             p.setHealth(0F);
             Msg.warn(p, UndyingMod.TAG).bi("已接受自杀指令…", "Suicide command accepted...").send();
             return 1;

@@ -23,6 +23,12 @@ public final class VoidRescue {
         if (!master || !ModConfig.VOID_RESCUE.get()) return false;
         if (p.getY() >= Const.VOID_Y_THRESHOLD) return false;
 
+        // One rescue per second. Without this, a rescue that fails to move the player (blocked,
+        // wrong dimension) re-fires every tick and floods both the log and the chat line.
+        PlayerState st = PlayerState.of(p);
+        if (p.tickCount - st.lastVoidRescueTick < 20) return true;
+        st.lastVoidRescueTick = p.tickCount;
+
         ServerLevel here = p.serverLevel();
         BlockPos respawn = p.getRespawnPosition();
         ServerLevel dim = respawn != null ? p.server.getLevel(p.getRespawnDimension()) : null;
@@ -31,7 +37,9 @@ public final class VoidRescue {
         BlockPos dest = hasBed ? respawn : here.getSharedSpawnPos();
         ServerLevel target = hasBed ? dim : here;
 
-        p.teleportTo(target, dest.getX() + 0.5, dest.getY() + 1, dest.getZ() + 0.5,
+        // Internal rescue: never asks the player, because answering "no" to being saved from
+        // the void is not a choice anyone means to make. See TeleportGuard.rescueTeleport.
+        TeleportGuard.rescueTeleport(p, target, dest.getX() + 0.5, dest.getY() + 1, dest.getZ() + 0.5,
                 p.getYRot(), p.getXRot());
         return true;
     }
