@@ -35,7 +35,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * [New implementation]
  *   It no longer looks at isDeadOrDying(); it looks only at two signals that [cannot be
  *   forged from the outside]:
- *     (1) UndyingMod.PENDING_SUICIDES - our own /antigrief die command
+ *     (1) a suicide flag written by our own command (removed in 2.9.1)
  *     (2) UndyingMod.isDeathGranted(p) - written only by undying$onDie() on a real death
  *         path that [we] recognise, and expiring automatically after 60 seconds
  *
@@ -44,9 +44,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  *   At the same time MixinLivingEntity prevents the player's health from being written to 0,
  *   so the "drain health first, then remove" combination breaks at its first link.
  *
- * Note: real death + respawn still work normally: health reaches zero on death ->
- *    MixinLivingEntity.undying$onDie (or isDeathGranted) lets it through -> the
- *    remove(KILLED) in the respawn flow is permitted inside the authorisation window.
+ * Note: there is no authorisation window any more (2.9.1 removed /antigrief die and both
+ * permits). While the death lock is on, remove(KILLED) is refused outright; a real death only
+ * happens with the lock off, where this gate does not engage at all.
  */
 @Mixin(Entity.class)
 public abstract class MixinEntity {

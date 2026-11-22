@@ -147,9 +147,9 @@ public abstract class MixinLivingEntity {
      * value no health value can be larger than, because health is a {@code float} too. See
      * {@link com.undying.core.DamageClamp}.
      *
-     * <p>The two checks that must stay: a pending {@code /antigrief die} and an authorised
-     * death teardown both need their damage to arrive intact, or the one way out of a world
-     * stops working.
+     * <p>There are no exceptions any more: since 2.9.1 there is no authorised death, so every
+     * lethal hit is capped. Turning the death lock off is the way out, and then this layer does
+     * not run at all.
      */
     @ModifyVariable(method = "m_6469_", at = @At("HEAD"), argsOnly = true, index = 2, remap = false)
     private float undying$clampDamage(float amount) {

@@ -150,13 +150,13 @@ current implementation:
 | 项目 / Item | 数量 / Count |
 |---|---|
 | Mixin 类 / Mixin classes | 17 |
-| 注入点 / Injection points | 28 |
-| 其中可取消原版流程 / Of which cancellable | 18 |
-| 死亡锁拦截点 / Death-lock interception points | 12 |
-| 环境门禁调用点 / Environment gate call sites | 29（分布 19 个文件 / across 19 files） |
+| 注入点 / Injection points | 29 |
+| 其中可取消原版流程 / Of which cancellable | 19 |
+| 死亡锁拦截点 / Death-lock interception points | 13 |
+| 环境门禁调用点 / Environment gate call sites | 31 |
 | 自检探针 / Self-check probes | 10 |
-| 主要类 / Main classes | 107（不含 17 个 mixin / excluding the 17 mixins） |
-| 单元测试 / Unit tests | 223（26 个测试类 / 26 test classes） |
+| 主要类 / Main classes | 112（不含 17 个 mixin / excluding the 17 mixins） |
+| 单元测试 / Unit tests | 231（28 个测试类 / 28 test classes） |
 
 **一个死亡要真正发生，需要上述拦截点同时失效。** 每个点都在代码里独立实现，不共享同一个开关。
 
@@ -208,6 +208,7 @@ Here is where the interception points sit — this is why it is hard to route ar
 | 10 | 图腾补挂 / Totem injection | `LivingEntity.checkTotemDeathProtection` | `@Inject` HEAD |
 | 11 | 图腾归还 / Totem restore | `LivingEntity.checkTotemDeathProtection` | `@Inject` RETURN |
 | 12 | 伤害钳制 / Damage ceiling | `LivingEntity.hurt` | `@ModifyVariable` |
+| 13 | 死亡决策（发包前）/ Death decision, before the packet | `ServerPlayer.die` | `@Inject` HEAD，可取消 |
 
 | # | 拦截点 / Interception point | 目标方法 / Target | 类型 / Kind |
 |---|---|---|---|
@@ -223,11 +224,12 @@ Here is where the interception points sit — this is why it is hard to route ar
 | 10 | Totem injection | `LivingEntity.checkTotemDeathProtection` | `@Inject` HEAD |
 | 11 | Totem restore | `LivingEntity.checkTotemDeathProtection` | `@Inject` RETURN |
 | 12 | Damage ceiling | `LivingEntity.hurt` | `@ModifyVariable` |
+| 13 | Death decision, before the packet | `ServerPlayer.die` | `@Inject` HEAD, cancellable |
 
-**死亡锁共 12 个拦截点，其中 6 个可取消原版流程（第 1、2、6、7、8、9 行）。** 另有 4 处 `@ModifyVariable`（第 3、4、5、12 行）改写传入的数值，属于改值而非取消，不计入可取消那一栏。要真正杀死玩家，这些点必须**同时**失效 —— 这就是「四层机制」背后的实际规模。
+**死亡锁共 13 个拦截点，其中 7 个可取消原版流程（第 1、2、6、7、8、9、13 行）。** 另有 4 处 `@ModifyVariable`（第 3、4、5、12 行）改写传入的数值，属于改值而非取消，不计入可取消那一栏。要真正杀死玩家，这些点必须**同时**失效 —— 这就是「四层机制」背后的实际规模。
 
-**The death lock has 12 interception points, 6 of which can cancel vanilla's flow (rows 1, 2, 6, 7,
-8, 9).** The four `@ModifyVariable` points (rows 3, 4, 5, 12) rewrite an incoming value rather than
+**The death lock has 13 interception points, 7 of which can cancel vanilla's flow (rows 1, 2, 6, 7,
+8, 9, 13).** The four `@ModifyVariable` points (rows 3, 4, 5, 12) rewrite an incoming value rather than
 cancelling the call, so they are not counted as cancellable. For a death to succeed, all of them must fail
 *simultaneously* — that is the actual scale behind "four mechanisms".
 
@@ -714,9 +716,9 @@ Matching displayed text fails on any non-English client.
 
 ### 2. 功能入口门禁 / Feature entry-point gate
 
-`Environment.isAllowed(...)` 在 29 处被调用，分布在 19 个文件中：聊天触发词、进入世界、每 tick 任务、指令、物品交互，以及所有可作用于 `ServerPlayer` 的 mixin 注入点。
+`Environment.isAllowed(...)` 在 31 处被调用：聊天触发词、进入世界、每 tick 任务、指令、物品交互，以及所有可作用于 `ServerPlayer` 的 mixin 注入点。
 
-`Environment.isAllowed(...)` is consulted at 29 call sites across 19 files: chat triggers, world
+`Environment.isAllowed(...)` is consulted at 31 call sites: chat triggers, world
 join, per-tick work, commands, item interaction, and every mixin injector that can affect a
 `ServerPlayer`.
 
@@ -806,11 +808,11 @@ inventory-change threshold and counting, the three-press confirmation, the switc
 screen's grid layout, report-file rotation, and mod-jar resource parsing and classification. The Forge toolchain is deliberately excluded from the test
 classpath, so tests run without provisioning the game.
 
-**这层覆盖不到的东西要说清楚**：28 个注入点、图形界面、以及任何需要真实 Forge 运行时对象的
+**这层覆盖不到的东西要说清楚**：29 个注入点、图形界面、以及任何需要真实 Forge 运行时对象的
 代码（`IModFile`、`SecureJar`、mixin 类），单测通过都不构成它们能工作的证据。
 上一版有 10 个用例全绿、生产环境却 100% 失效，原因正是测试用的是真实文件系统上的真实文件。
 
-**What that does not cover**: the 28 injection points, the GUI, and anything that touches real
+**What that does not cover**: the 29 injection points, the GUI, and anything that touches real
 Forge runtime objects (`IModFile`, `SecureJar`, mixin classes). A green test run is not evidence
 that those work. The previous release shipped ten passing tests on top of a feature that failed
 on every machine in production: the tests used real files on a real filesystem, which was the one
