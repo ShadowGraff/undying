@@ -2,7 +2,7 @@
   "key.categories.undying": "Undying",
   "key.undying.open_config": "打开 Undying 配置",
   "undying.config.title": "Undying · 配置",
-  "undying.config.hint": "总开关一键全关；单项只影响它自己",
+  "undying.config.hint": "总开关一键全关；单项只影响它自己。在面板里改即时生效；直接改配置文件里的防护开关，要重进世界才生效",
   "undying.config.allow_list": "领域白名单…",
   "undying.state.on": "开",
   "undying.state.off": "关",

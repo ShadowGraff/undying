@@ -163,7 +163,9 @@ public final class BackupService {
                     Files.createDirectories(target.getParent());
                     Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
 
-                    BackupVersion v = new BackupVersion(f.path(), nowSeconds, f.size(), null);
+                    // Hash the copy, not the source: the point of the hash is to know later
+                    // whether the file we stored is still the file we stored.
+                    BackupVersion v = new BackupVersion(f.path(), nowSeconds, f.size(), sha256(target));
                     added.add(v);
                     index.add(v);
                     copied++;
@@ -236,6 +238,27 @@ public final class BackupService {
             }
         }
         return removed;
+    }
+
+    /**
+     * SHA-256 of a file, lowercase hex, or null when it cannot be read.
+     *
+     * <p>Null is honest: a copy without a hash is still a copy, and the restore report says
+     * "unverified" rather than pretending. Computed after the copy because the game may still be
+     * writing the source; the copy is stable.
+     */
+    static String sha256(Path file) {
+        try (var in = Files.newInputStream(file)) {
+            var md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] buf = new byte[64 * 1024];
+            int n;
+            while ((n = in.read(buf)) > 0) md.update(buf, 0, n);
+            StringBuilder sb = new StringBuilder(64);
+            for (byte b : md.digest()) sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (Throwable t) {
+            return null;
+        }
     }
 
     private static Map<String, BackupVersion> newestPerPath(List<BackupVersion> index) {

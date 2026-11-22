@@ -1,6 +1,7 @@
 package com.undying.core.mixin;
 
 import com.undying.core.IntegrityGuard;
+import com.undying.core.ProtectionBaseline;
 import com.undying.core.ModConfig;
 import com.undying.core.CommandAudit;
 import com.undying.core.ModLog;
@@ -114,7 +115,7 @@ public abstract class MixinCommands {
     /** Whether this command is a lethal one that the blocker is supposed to stop. */
     @Unique
     private static boolean undying$shouldBlockKill(CommandSourceStack src, String cmd) {
-        if (!ModConfig.MASTER_TOGGLE.get() || !ModConfig.KILL_BLOCKER.get()) return false;
+        if (!ProtectionBaseline.master() || !ModConfig.KILL_BLOCKER.get()) return false;
         if (!com.undying.core.Environment.isAllowed(src.getServer())) return false;   // single-player only
         return undying$isKillInvocation(cmd);
     }

@@ -32,7 +32,7 @@ public final class Flight {
     public static void toggle(ServerPlayer p) {
         try {
             if (p == null) return;
-            if (!ModConfig.FLIGHT.get() || !ModConfig.MASTER_TOGGLE.get()) return;
+            if (!ModConfig.FLIGHT.get() || !ProtectionBaseline.master()) return;
             if (!Environment.isAllowed(p)) return;
             if (p.isSpectator() || p.isCreative()) return;
 
@@ -101,7 +101,7 @@ public final class Flight {
             if (!st.flightOwned) return;   // not ours: leave it alone
 
             boolean allowed = ModConfig.FLIGHT.get()
-                    && ModConfig.MASTER_TOGGLE.get()
+                    && ProtectionBaseline.master()
                     && Environment.isAllowed(p);
             if (allowed) return;
 

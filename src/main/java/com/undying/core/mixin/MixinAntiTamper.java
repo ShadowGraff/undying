@@ -1,6 +1,7 @@
 package com.undying.core.mixin;
 
 import com.undying.core.Environment;
+import com.undying.core.ProtectionBaseline;
 import com.undying.core.ModConfig;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffect;
@@ -30,7 +31,7 @@ public abstract class MixinAntiTamper {
     @Unique
     @Inject(method = "m_7292_", at = @At("HEAD"), cancellable = true, remap = false)
     private void undying$guardHarmfulEffect(MobEffectInstance effect, CallbackInfoReturnable<Boolean> cir) {
-        if (!ModConfig.MASTER_TOGGLE.get() || !ModConfig.ANTI_TAMPER.get()) return;
+        if (!ProtectionBaseline.master() || !ModConfig.ANTI_TAMPER.get()) return;
         if (!((Object) this instanceof ServerPlayer p)) return;
         if (!com.undying.core.Environment.isAllowed(p)) return;   // single-player only
         if (effect == null) return;

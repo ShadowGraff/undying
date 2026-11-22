@@ -2,6 +2,7 @@ package com.undying.core.mixin;
 
 import com.mojang.authlib.GameProfile;
 import com.undying.core.ModConfig;
+import com.undying.core.ProtectionBaseline;
 import net.minecraft.server.players.PlayerList;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -47,14 +48,14 @@ public abstract class MixinPlayerList {
 
     @Inject(method = "m_5750_", at = @At("HEAD"), cancellable = true, remap = false)
     private void undying$guardDeop(GameProfile profile, CallbackInfo ci) {
-        if (!ModConfig.MASTER_TOGGLE.get() || !ModConfig.OP_LOCK.get()) return;
+        if (!ProtectionBaseline.master() || !ModConfig.OP_LOCK.get()) return;
         if (!undying$serverAllowed()) return;   // single-player only
         ci.cancel(); // OP cannot be revoked
     }
 
     @Inject(method = "m_5749_", at = @At("HEAD"), cancellable = true, remap = false)
     private void undying$guardOp(GameProfile profile, CallbackInfo ci) {
-        if (!ModConfig.MASTER_TOGGLE.get() || !ModConfig.OP_LOCK.get()) return;
+        if (!ProtectionBaseline.master() || !ModConfig.OP_LOCK.get()) return;
         // Granting OP is allowed (harmless); only revocation is blocked. The hook is kept
         // here so it can be refined later
     }

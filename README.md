@@ -254,10 +254,17 @@ alive while attempting removal every 50 ms. Refusing the damage at the entry poi
 path for dimension changes and respawns; intercepting it produces two entities for the same
 player and subsequently a null-pointer exception in the chunk manager.
 
-**解除死亡锁的方式：**`/antigrief die`（**只接受聊天栏输入**：命令方块、函数、其他模组的 `performCommand` 一律拒绝），或聊天框自杀触发词。该路径不经过死亡锁，使其始终可用。
+**想死的话，退出模式就是死。** 关掉「不朽模式」（`O` 面板的总开关，或 `/antigrief master`），然后正常死亡；不想玩了就直接退出世界。
 
-**Releasing the death lock:** `/antigrief die` (chat input only), or the suicide chat trigger. This path bypasses
-the death lock so that it remains available at all times.
+**2.9.1 起移除了 `/antigrief die`。** 它原本是「哪怕所有防护都关着也能退出世界」的逃生口，但正因为它对谁都能用，也就成了别人最省事的刀——同进程的任何模组都能代跑它，让五道闸同时让路。现在没有这条通道：**要死，就先把防护关掉**，那是玩家自己做的、看得见的动作。
+
+**Wanting to die means leaving immortal mode.** Turn the master switch off (O panel, or
+`/antigrief master`) and die normally, or just quit the world.
+
+**`/antigrief die` was removed in 2.9.1.** It was the escape hatch that worked no matter what - and
+that is exactly why it was the cheapest weapon for anyone else: any mod in the process could dispatch
+it and make five gates stand aside at once. There is no such channel now. To die, you turn protection
+off, which is a visible action the player takes.
 
 ### 隐藏槽位 / Hidden slots
 
@@ -568,9 +575,9 @@ place from the other side: health stops at one heart, and nothing else changes.
 | 关闭后 / When off | 回到旧行为：致命一击整次拒绝，血条不动 / old all-or-nothing behaviour |
 | 配置 / Config | `[undying] clampDamage`（默认 true） |
 
-不在拦截范围：`/antigrief die`（唯一的自杀出口，**只接受聊天栏输入**）与已授权的死亡收尾，它们的伤害必须原样到达。
+不在拦截范围：关掉不朽模式之后的正常死亡——防护整体不介入。
 
-Not affected: `/antigrief die` (chat input only) and an authorised death teardown — those need their damage intact.
+Not affected: a normal death with immortal mode off — protection does not engage at all.
 
 ---
 
@@ -630,18 +637,19 @@ active".
 
 ---
 
-### 一个刻意的收紧 / A deliberate tightening
+### 2.9.1：拿掉那把挂在门边的钥匙 / the key by the door is gone
 
-`/antigrief die` 是"随便怎么都能退出世界"的逃生口，所以它也是别人最想借用的刀。从 1.9.1 起，
-它**只认聊天栏输入**：命令方块、数据包函数、以及其它模组通过命令分发器代跑的同名命令，都会被拒绝并
-提示"只接受玩家在聊天栏输入的命令"。
+`/antigrief die` 曾经是「哪怕所有防护都关着也能退出世界」的逃生口。问题在于它必须对**任何人**可用
+才有意义——包括同进程里的任何一个模组。它不需要赢过 12 个拦截点，只要替玩家签一张我们认的通行证。
 
-判断依据是网络层：玩家的命令一定经过 `handleChatCommand`，代跑的命令不经过。这不是权限等级，
-而是"这一 tick 有没有真人敲键盘"。
+所以 2.9.1 把它删了，连同后面那两个「授权」信号（自杀标志、60 秒死亡许可）。现在不存在「被授权的死亡」：
+**要么防护关着自己正常死，要么死不了。**
 
-**Why:** the escape hatch had to work with every protection off, which made it the cheapest way for
-any code in the same process to drive a real death. It now requires the command to have arrived as
-a chat packet; a dispatcher call from another mod leaves no such mark.
+代价是诚实的：不朽模式下不能自杀。但「我想在无敌状态下死掉」本身就是矛盾的——想死，就先退出模式。
+
+**Why it had to go:** a permission that works for everyone works for the attacker too. Removing the
+command and both permits leaves no state to forge: a death happens with the death lock off, or it does
+not happen. The cost — no suicide while immortal — is a contradiction removed, not a feature lost.
 
 ## 关于常驻 / About keeping it installed
 

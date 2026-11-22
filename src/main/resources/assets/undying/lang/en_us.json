@@ -2,7 +2,7 @@
   "key.categories.undying": "Undying",
   "key.undying.open_config": "Open Undying Config",
   "undying.config.title": "Undying · Settings",
-  "undying.config.hint": "The master switch turns everything off at once; a single switch only affects itself",
+  "undying.config.hint": "The master switch turns everything off at once; a single switch only affects itself. Panel changes apply immediately; editing protection switches in the file takes effect on the next world entry",
   "undying.config.allow_list": "Domain allow-list...",
   "undying.state.on": "ON",
   "undying.state.off": "OFF",

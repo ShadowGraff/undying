@@ -40,6 +40,10 @@ public final class TickTasks {
         SaveSnapshot.onTick(p);    // periodically capture and persist a snapshot
         checkOp(p, master);        // prevent OP from being revoked behind our back
 
+        // Reads the outcome, not the call chain: a third layer that survives hooks being
+        // skipped or cancelled by a higher-priority mixin. See PostTickInvariant.
+        com.undying.core.PostTickInvariant.check(p);
+
         // World backup: the decision runs once a second, the copying happens on a worker thread.
         // Behind its own switch and behind the single-player gate, so nothing happens on a
         // server someone else owns.

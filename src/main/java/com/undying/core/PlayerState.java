@@ -65,8 +65,35 @@ public final class PlayerState {
 
     /** Gets (creating if needed) the state for a UUID. The caller must guarantee this is an
      *  online player, otherwise call clear on quit */
+    /**
+     * Upper bound on tracked players.
+     *
+     * <p>{@code of(randomUUID)} creates an entry for anyone a caller names, and nothing used to
+     * remove it — a mod that probes a thousand UUIDs leaves a thousand states behind for the rest
+     * of the session. A cap is the cheap fix; the expensive one (reference counting) would need
+     * every call site to give the state back.
+     *
+     * <p>Entries are only evicted when they are marked {@link #online} == false, so an entry in
+     * use cannot be dropped out from under a caller.
+     */
+    private static final int MAX_TRACKED = 256;
+
     public static PlayerState of(UUID id) {
-        return BY_ID.computeIfAbsent(id, u -> new PlayerState());
+        PlayerState state = BY_ID.computeIfAbsent(id, u -> new PlayerState());
+        if (BY_ID.size() > MAX_TRACKED) evictOffline();
+        return state;
+    }
+
+    private static void evictOffline() {
+        try {
+            for (var entry : BY_ID.entrySet()) {
+                if (BY_ID.size() <= MAX_TRACKED / 2) return;
+                PlayerState v = entry.getValue();
+                if (!v.online) BY_ID.remove(entry.getKey(), v);
+            }
+        } catch (Throwable ignored) {
+            // Bookkeeping only: never let cleanup break a lookup.
+        }
     }
 
     /** Lookup only, never creates; returns null when absent */
@@ -80,6 +107,8 @@ public final class PlayerState {
      * <p>{@code UndyingMod.onQuit} is allowed to contain this single line and nothing else.
      */
     public static void clear(UUID id) {
+        PlayerState gone = BY_ID.get(id);
+        if (gone != null) gone.online = false;
         if (id != null) BY_ID.remove(id);
     }
 
@@ -90,11 +119,9 @@ public final class PlayerState {
 
     // ══════════════ Death lock ══════════════
 
-    /** Our own {@code /antigrief die} is currently executing */
-    public boolean pendingSuicide;
+
 
     /** Death-authorization timestamp (milliseconds); 0 = no authorization */
-    public long deathGrantAt;
 
     // ══════════════ Visuals ══════════════
 
@@ -191,6 +218,9 @@ public final class PlayerState {
     public KickGuard.Pending pendingKick;
 
     // ══════════════ Glow ══════════════
+
+    /** Whether the player is currently in a world; used only for eviction decisions. */
+    public volatile boolean online;
 
     /** Tick of the last void rescue, so a failing rescue cannot re-fire every tick. */
     public int lastVoidRescueTick;

@@ -475,7 +475,11 @@ public class Networking {
         public static void handle(ConfigToggledMessage m, Supplier<NetworkEvent.Context> ctx) {
             ctx.get().enqueueWork(() -> {
                 ServerPlayer p = ctx.get().getSender();
-                if (p != null) IntegrityGuard.onPlayerToggled(p);
+                if (p != null) {
+                    IntegrityGuard.onPlayerToggled(p);
+                    // A switch the player just flipped is a new baseline, not a tampering event.
+                    ProtectionBaseline.capture();
+                }
             });
             ctx.get().setPacketHandled(true);
         }

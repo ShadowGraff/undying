@@ -2,6 +2,7 @@
   "required": true,
   "minVersion": "0.8",
   "package": "com.undying.core.mixin",
+  "priority": 500,
   "plugin": "com.undying.core.UndyingMixinPlugin",
   "mixins": [
     "MixinServerPlayer",
@@ -16,7 +17,6 @@
     "SynchedEntityDataOwnerAccess",
     "MixinServerPlayerTeleport",
     "MixinConnectionDisconnect",
-    "MixinConnectionChatCommand",
     "MixinMinecraftServerStop"
   ],
   "client": [

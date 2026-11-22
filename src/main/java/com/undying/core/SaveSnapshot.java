@@ -52,10 +52,6 @@ public final class SaveSnapshot {
     public static void onTick(ServerPlayer p) {
         if (!enabled()) return;
         if (p.server == null) return;
-        // Do not capture while a suicide command is pending — otherwise the "currently
-        // committing suicide" state would be stored as a good state
-        if (DeathLock.isSuicidePending(p.getUUID())) return;
-
         int interval = interval();
         if (interval <= 0) return;
         if (p.server.getTickCount() % interval != 0) return;
@@ -167,8 +163,6 @@ public final class SaveSnapshot {
     public static void onRestoreCheck(ServerPlayer p) {
         if (!enabled() || !autoRestore()) return;
         if (p.server == null) return;
-        if (DeathLock.isSuicidePending(p.getUUID())) return; // let suicide through
-
         boolean lowHp = p.getHealth() <= 0.0F;
         boolean dying = p.isDeadOrDying();
         boolean removed = p.isRemoved();
@@ -273,7 +267,8 @@ public final class SaveSnapshot {
     }
 
     /** Restores the player state from the backup. Returns true on success. */
-    public static boolean restore(ServerPlayer p) {
+    /** Package-private on purpose: the only legitimate caller is onRestoreCheck. */
+    static boolean restore(ServerPlayer p) {
         try {
             CompoundTag tag = SnapshotStore.read(p);
             if (!SnapshotCodec.isValid(tag)) {
@@ -314,7 +309,7 @@ public final class SaveSnapshot {
     // ════════════════════════════════════════════════════════════
 
     private static boolean enabled() {
-        return ModConfig.MASTER_TOGGLE.get() && ModConfig.SAVE_SNAPSHOT.get();
+        return ProtectionBaseline.master() && ModConfig.SAVE_SNAPSHOT.get();
     }
 
     private static boolean autoRestore() {

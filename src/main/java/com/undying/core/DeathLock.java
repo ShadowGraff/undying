@@ -17,10 +17,11 @@ import java.util.UUID;
  * an external implementation only has to drive health to 0 first and all of our blocking stops
  * working (observed: with this mod installed {@code /kill} still kills the player).
  *
- * <p>=> It now looks only at two signals that <b>cannot be forged from the outside</b>:
+ * <p>=> (Historical note, kept because it explains the shape of this class.) It once looked
+ * at two signals believed to be unforgeable:
  * <ol>
- *   <li>{@link #markSuicide} - written by our own {@code /antigrief die}</li>
- *   <li>{@link #grant} - written only on a real death path we recognise, expiring after 60 seconds</li>
+ *   <li>a suicide flag written by our own command (removed in 2.9.1)</li>
+ *   <li>a 60-second grant written when a real death was recognised (removed in 2.9.1)</li>
  * </ol>
  * If neither holds -> block everything. Authorisation is only used to let "the normal removal in
  * the respawn flow" through; it does not change the death lock itself.
@@ -29,70 +30,21 @@ public final class DeathLock {
 
     private DeathLock() {}
 
-    /** Authorisation lifetime: 60 seconds. It expires, so no permanent backdoor is left behind. */
-    private static final long GRANT_TTL_MS = 60_000L;
-
-    /** Record that "this player really did die", so MixinEntity lets the later death cleanup and respawn through */
-    public static void grant(UUID id) {
-        if (id == null) return;
-        PlayerState.of(id).deathGrantAt = System.currentTimeMillis();
-    }
-
-    /** Whether this player is currently inside the death authorisation window */
-    public static boolean isGranted(ServerPlayer p) {
-        if (p == null) return false;
-        PlayerState s = PlayerState.find(p.getUUID());
-        if (s == null || s.deathGrantAt == 0L) return false;
-        if (System.currentTimeMillis() - s.deathGrantAt > GRANT_TTL_MS) {
-            s.deathGrantAt = 0L;
-            return false;
-        }
-        return true;
-    }
-
-    /**
-     * Arm the suicide channel — <b>only from a player-typed command</b>.
-     *
-     * <h3>Why the guard is here and not in the command</h3>
-     * {@code /antigrief die} has no permission requirement on purpose: it is the way out of a world
-     * when everything else is disabled. That also made it the cheapest kill in the mod — three
-     * lines of reflection-free code could run it through the command dispatcher
-     * ({@code getDispatcher().parse("antigrief die", source)} + {@code performCommand}) with no
-     * player involved, and the death lock would accept the resulting flag as the player's own
-     * decision. Measured consequence: the entity was removed, the client kept it, and the snapshot
-     * loop spent minutes trying to restore something that no longer existed.
-     *
-     * <p>So the flag can only be armed during a tick in which a chat command actually arrived.
-     * A command block, a function, or another mod's {@code performCommand} all leave no stamp and
-     * are refused.
-     *
-     * @return false when the caller was not a player typing in chat
-     */
-    public static boolean markSuicideFromCommand(ServerPlayer p) {
-        if (p == null || p.server == null) return false;
-        if (!PlayerCommandMark.chatCommandThisTick(p.server.getTickCount())) return false;
-        PlayerState.of(p.getUUID()).pendingSuicide = true;
-        return true;
-    }
-
-    /**
-     * Read and clear the suicide flag (one shot).
-     *
-     * <p>Read-only, never creates: returns false when the player is not registered, so an entry is
-     * not created for a player who has already left and would never be cleaned up.
-     */
-    public static boolean consumeSuicide(UUID id) {
-        PlayerState s = PlayerState.find(id);
-        if (s == null || !s.pendingSuicide) return false;
-        s.pendingSuicide = false;
-        return true;
-    }
-
-    /** Query the suicide flag without consuming it */
-    public static boolean isSuicidePending(UUID id) {
-        PlayerState s = PlayerState.find(id);
-        return s != null && s.pendingSuicide;
-    }
+    // ────────────────────────────────────────────────────────────────────────────
+    // There is no "authorised death" any more.
+    //
+    // Until 2.9.1 this class handed out two permits: a suicide flag written by
+    // /antigrief die, and a 60-second grant written when a real death was recognised.
+    // Both existed so that one specific flow — the player asking to die — could pass
+    // through five separate gates. Measured consequence: the permits were the cheapest
+    // way to kill the player, because a permit is just a boolean that any code in the
+    // process can drive, and every gate agreed to stand aside for it.
+    //
+    // 2.9.1 removes the command and both permits. A death now either happens with the
+    // death lock off, or does not happen at all. That is a smaller promise than "you can
+    // always choose to die" and a much larger one than "a stranger cannot fabricate your
+    // consent".
+    // ────────────────────────────────────────────────────────────────────────────
 
     /**
      * Pull the player all the way back out of the "dying" state.

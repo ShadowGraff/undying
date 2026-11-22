@@ -22,26 +22,12 @@ public final class AntiGriefCommand {
     public static void register(CommandDispatcher<CommandSourceStack> d) {
         var root = Commands.literal("antigrief");
 
-        // ── /antigrief die ──
-        // Set the suicide flag before setting health: that flag is the only credential
-        // the death lock accepts, and reversing the order means our own lock blocks us.
-        // Deliberately NOT gated on the environment: this is the escape hatch that lets a
-        // player leave a world even when everything else is disabled.
-        root.then(Commands.literal("die").executes(ctx -> {
-            ServerPlayer p = ctx.getSource().getPlayerOrException();
-
-            // Only a real chat command may open this door. See DeathLock.markSuicideFromCommand:
-            // without the check, any mod in the process could run this through the dispatcher.
-            if (!DeathLock.markSuicideFromCommand(p)) {
-                Msg.warn(p, UndyingMod.TAG)
-                        .bi("只接受玩家在聊天栏输入的命令", "Only a command typed in chat is accepted")
-                        .send();
-                return 0;
-            }
-            p.setHealth(0F);
-            Msg.warn(p, UndyingMod.TAG).bi("已接受自杀指令…", "Suicide command accepted...").send();
-            return 1;
-        }));
+        // /antigrief die was removed in 2.9.1. It existed as "the escape hatch that works
+        // even with everything off", and that is exactly what made it the most valuable thing
+        // in the mod for anyone trying to kill the player: three lines of dispatcher code could
+        // drive a real death. A player who wants to die turns the immortal mode off (O panel or
+        // /antigrief master) and dies the normal way. Nothing is lost except the ability to
+        // commit suicide while immortal, which is a contradiction anyway.
 
         // ── /antigrief master ──
         // Go through ImmortalMode.toggle because it also resets the integrity guard's

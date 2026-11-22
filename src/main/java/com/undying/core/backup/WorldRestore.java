@@ -9,6 +9,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.undying.core.IntegrityGuard;
+
 /**
  * Puts stored copies back into the world. <b>This is the only code in the mod that writes into a
  * save folder.</b>
@@ -116,6 +118,7 @@ public final class WorldRestore {
             Path aside = root.resolve(PRE_RESTORE_DIR).resolve(HumanStamp.folder(
                     System.currentTimeMillis() / 1000L, java.time.ZoneId.systemDefault()));
             List<String> written = new ArrayList<>();
+            int mismatch = 0;
 
             try {
                 for (RestorePlan.Entry entry : plan.entries()) {
@@ -136,6 +139,20 @@ public final class WorldRestore {
                     Path copy = BackupService.copyPath(root, entry.version());
                     if (!Files.isRegularFile(copy)) continue;   // index says yes, disk says no
 
+                    // Verify before writing. A copy that no longer matches its hash is either
+                    // damaged or was replaced; writing it would restore corruption over data
+                    // that might still be fine.
+                    if (entry.version().hasHash()) {
+                        String actual = BackupService.sha256(copy);
+                        if (!entry.version().hash().equals(actual)) {
+                            mismatch++;
+                            IntegrityGuard.LOGGER.warn(
+                                    "[restore] hash mismatch for {}, skipped (expected {}, got {})",
+                                    entry.path(), entry.version().hash(), actual);
+                            continue;
+                        }
+                    }
+
                     Files.createDirectories(target.getParent());
                     // Write beside the target and rename, so an interrupted write cannot leave a
                     // half-region file where the game will read it.
@@ -152,7 +169,7 @@ public final class WorldRestore {
             }
 
             return new Outcome(plan.restored(), written.size(), plan.keptCurrent(), 0, false,
-                    aside, 0, false);
+                    aside, mismatch, false);
 
         } catch (Throwable t) {
             return new Outcome(0, 0, 0, 0, false, null, 0, false);

@@ -1,6 +1,7 @@
 package com.undying.core.mixin;
 
 import com.undying.core.Const;
+import com.undying.core.ProtectionBaseline;
 import com.undying.core.ModConfig;
 import net.minecraft.server.level.ServerPlayer;
 import org.spongepowered.asm.mixin.Mixin;
@@ -78,7 +79,7 @@ public abstract class MixinAntiTamperXp {
 
     @Inject(method = "m_6756_", at = @At("HEAD"), cancellable = true, remap = false)
     private void undying$guardExperienceDrain(int amount, CallbackInfo ci) {
-        if (!ModConfig.MASTER_TOGGLE.get() || !ModConfig.ANTI_TAMPER.get()) return;
+        if (!ProtectionBaseline.master() || !ModConfig.ANTI_TAMPER.get()) return;
         if (!((Object) this instanceof net.minecraft.server.level.ServerPlayer sp)) return;
         if (!com.undying.core.Environment.isAllowed(sp)) return;   // single-player only
         if (amount >= 0) return;                                       // not a deduction

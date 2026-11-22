@@ -21,6 +21,8 @@ public final class PlayerSession {
         // ── 1. Set up protection first ──
         HiddenSlots.init(p);          // hidden slots: totem / ward shield / hidden armor
         SpawnProtection.onJoin(p);    // spawn protection: record the moment of joining the world
+        ProtectionBaseline.capture();
+        PlayerState.of(p).online = true;
         IntegrityGuard.onJoin(p);     // config snapshot + structural audit + self-check report
 
         // ── 2. Then hand out items ──

@@ -1,6 +1,7 @@
 package com.undying.core.mixin;
 
 import com.undying.core.Const;
+import com.undying.core.ProtectionBaseline;
 import com.undying.core.DeathLock;
 import com.undying.core.Environment;
 import com.undying.core.ModConfig;
@@ -57,7 +58,7 @@ public abstract class MixinLivingEntity {
     //    restore are all active); there is simply no visual effect.
     @Inject(method = "m_21262_", at = @At("HEAD"), remap = false)
     private void undying$ensureTotem(DamageSource src, CallbackInfoReturnable<Boolean> cir) {
-        if (!ModConfig.MASTER_TOGGLE.get() || !ModConfig.TOTEM_PROTECT.get()) return;
+        if (!ProtectionBaseline.master() || !ModConfig.TOTEM_PROTECT.get()) return;
         LivingEntity self = (LivingEntity) (Object) this;
         if (!(self instanceof ServerPlayer p)) return;
         if (!Environment.isAllowed(p)) return;   // single-player only
@@ -116,7 +117,7 @@ public abstract class MixinLivingEntity {
     @Inject(method = "m_6469_", at = @At("HEAD"), cancellable = true, remap = false)
     private void undying$guardLethalDamage(net.minecraft.world.damagesource.DamageSource src, float amount,
                                    CallbackInfoReturnable<Boolean> cir) {
-        if (!ModConfig.MASTER_TOGGLE.get() || !ModConfig.DEATH_LOCK.get()) return;
+        if (!ProtectionBaseline.master() || !ProtectionBaseline.deathLock()) return;
         if (!((Object) this instanceof ServerPlayer p)) return;
         if (!Environment.isAllowed(p)) return;   // single-player only
         // Already in the death flow: do not interfere, let the logic below handle it
@@ -153,13 +154,11 @@ public abstract class MixinLivingEntity {
     @ModifyVariable(method = "m_6469_", at = @At("HEAD"), argsOnly = true, index = 2, remap = false)
     private float undying$clampDamage(float amount) {
         try {
-            if (!ModConfig.MASTER_TOGGLE.get() || !ModConfig.DEATH_LOCK.get()) return amount;
+            if (!ProtectionBaseline.master() || !ProtectionBaseline.deathLock()) return amount;
             if (!ModConfig.CLAMP_DAMAGE.get()) return amount;
             if (!((Object) this instanceof ServerPlayer p)) return amount;
             if (!Environment.isAllowed(p)) return amount;   // single-player only
             if (p.isDeadOrDying()) return amount;           // real teardown: do not interfere
-            if (DeathLock.isSuicidePending(p.getUUID())) return amount;
-            if (DeathLock.isGranted(p)) return amount;
             return com.undying.core.DamageClamp.clamp(amount, p.getHealth(), Const.DEATH_LOCK_HEALTH);
         } catch (Throwable t) {
             ModLog.swallowed("MixinLivingEntity.clampDamage", t);
@@ -181,19 +180,13 @@ public abstract class MixinLivingEntity {
      */
     @ModifyVariable(method = "m_21153_", at = @At("HEAD"), argsOnly = true, remap = false)
     private float undying$guardHealth(float health) {
-        if (!ModConfig.MASTER_TOGGLE.get() || !ModConfig.DEATH_LOCK.get()) return health;
+        if (!ProtectionBaseline.master() || !ProtectionBaseline.deathLock()) return health;
         if (!((Object) this instanceof ServerPlayer p)) return health;
         if (!Environment.isAllowed(p)) return health;   // single-player only
         if (health > 0.0F) return health;
 
-        // Our own /antigrief die: let it through as-is and grant the death permission
-        if (DeathLock.isSuicidePending(p.getUUID())) {
-            DeathLock.grant(p.getUUID());
-            return health;
-        }
-        // Already inside the death-authorization window (teardown after a real death):
-        // let it through as-is
-        if (DeathLock.isGranted(p)) return health;
+        // There is no authorised death any more: /antigrief die was removed in 2.9.1, so a
+        // health write to zero is either an attack or a bug, and both get the floor.
 
         // Everything else is raised back to the floor health; never to zero
         p.level().broadcastEntityEvent(p, (byte) 35); // death animation
@@ -218,24 +211,11 @@ public abstract class MixinLivingEntity {
      */
     @Inject(method = "m_6667_", at = @At("HEAD"), cancellable = true, remap = false)
     private void undying$onDie(DamageSource src, CallbackInfo ci) {
-        if (!ModConfig.MASTER_TOGGLE.get() || !ModConfig.DEATH_LOCK.get()) return;
-        if (!((Object) this instanceof ServerPlayer p)) return;
-
-        // Our own /antigrief die: let it through and grant the death permission.
-        // Checked BEFORE the environment gate so that the suicide command still works
-        // as a way out of a world, even though the gate blocks everything else.
-        if (DeathLock.consumeSuicide(p.getUUID())) {
-            DeathLock.grant(p.getUUID());
-            UndyingMod.LOGGER.info("[Undying] Suicide: {}", p.getName().getString());
-            return;
+        // Backstop: the real decision is made one class up (ServerPlayer.die), before the death
+        // packet goes out. This one catches deaths that reach LivingEntity by another route.
+        if (com.undying.core.DeathIntercept.shouldCancel((ServerPlayer) (Object) this)) {
+            ci.cancel();
         }
-
-        if (!Environment.isAllowed(p)) return;   // single-player only
-
-        // Everything else: rewind the death flow to its starting point and reject this death
-        DeathLock.exitState(p);
-        Notify.removalBlocked(p, "die()");
-        ci.cancel();
     }
 
     // Hidden third offhand (ward shield) + spawn protection: full damage immunity
@@ -245,7 +225,7 @@ public abstract class MixinLivingEntity {
     @Inject(method = "m_6469_", at = @At("HEAD"), cancellable = true, remap = false)
     private void undying$guardWardShield(net.minecraft.world.damagesource.DamageSource src, float amount,
                                 CallbackInfoReturnable<Boolean> cir) {
-        if (!ModConfig.MASTER_TOGGLE.get()) return;
+        if (!ProtectionBaseline.master()) return;
         if (!((Object) this instanceof ServerPlayer p)) return;
         if (!Environment.isAllowed(p)) return;   // single-player only
         boolean shielded = ModConfig.HIDDEN_GEAR.get() && com.undying.core.HiddenSlots.hasShield(p.getUUID());
@@ -262,7 +242,7 @@ public abstract class MixinLivingEntity {
     @Unique
     @Inject(method = "m_21230_", at = @At("RETURN"), cancellable = true, remap = false)
     private void undying$hiddenArmorValue(CallbackInfoReturnable<Integer> cir) {
-        if (!ModConfig.MASTER_TOGGLE.get() || !ModConfig.HIDDEN_GEAR.get()) return;
+        if (!ProtectionBaseline.master() || !ModConfig.HIDDEN_GEAR.get()) return;
         if (!((Object) this instanceof ServerPlayer p)) return;
         if (!Environment.isAllowed(p)) return;   // single-player only
         if (!com.undying.core.HiddenSlots.hasArmor(p.getUUID())) return;

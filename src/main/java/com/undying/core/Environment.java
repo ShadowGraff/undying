@@ -190,8 +190,20 @@ public final class Environment {
     public static boolean isAllowed(ServerPlayer p) {
         if (p == null || p.server == null) return false;
         boolean ok = isAllowed(p.server);
-        if (!ok) notifyOnce(p);
-        return ok;
+        if (!ok) {
+            notifyOnce(p);
+            return false;
+        }
+
+        // One extra signal, and only in the restrictive direction: if the transport is provably
+        // not an in-memory channel, this is not the player's own single-player session. A null
+        // answer (could not tell) leaves the decision to the signals above.
+        Boolean local = LocalChannelProbe.isLocal(p);
+        if (local != null && !local) {
+            notifyOnce(p);
+            return false;
+        }
+        return true;
     }
 
     /** Convenience inverse, for readability at call sites */

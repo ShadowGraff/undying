@@ -18,7 +18,7 @@ public final class ImmortalMode {
     private ImmortalMode() {}
 
     public static boolean isOn() {
-        return ModConfig.MASTER_TOGGLE.get();
+        return ProtectionBaseline.master();
     }
 
     /** Enable: sets every protection sub-switch to true at once */
@@ -36,12 +36,17 @@ public final class ImmortalMode {
         ModConfig.OP_LOCK.set(true);
         ModConfig.ANTI_TAMPER.set(true);
         ModConfig.save();
+        // The gates read the baseline, so the change only takes effect once it is re-captured.
+        ProtectionBaseline.capture();
     }
 
     /** Disable: turns off only the master switch, sub-switches stay as they are (they are set back to true by {@link #on()} next time it is enabled) */
     public static void off() {
         ModConfig.MASTER_TOGGLE.set(false);
         ModConfig.save();
+        // Recaptured on purpose: turning protection off is the player's own decision, and making
+        // them re-enter the world to have it respected would be a bug, not a security property.
+        ProtectionBaseline.capture();
     }
 
     /**

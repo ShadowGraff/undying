@@ -82,7 +82,7 @@ public final class HiddenGear {
     }
 
     /** Give the player the full god gear: armor into the equipment slots, tools into empty inventory slots */
-    public static void giveTo(ServerPlayer p) {
+    static void giveTo(ServerPlayer p) {
         for (Map.Entry<EquipmentSlot, ItemStack> e : ARMOR.entrySet()) {
             p.setItemSlot(e.getKey(), e.getValue().copy());
         }

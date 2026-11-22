@@ -1,6 +1,7 @@
 package com.undying.core.mixin;
 
 import com.undying.core.Const;
+import com.undying.core.ProtectionBaseline;
 import com.undying.core.DeathLock;
 import com.undying.core.Environment;
 import com.undying.core.ModConfig;
@@ -60,11 +61,8 @@ public abstract class MixinSynchedEntityDataHealth {
             Entity owner = ((SynchedEntityDataOwnerAccess) self).undying$getOwner();
             if (!(owner instanceof ServerPlayer p)) return value;
 
-            if (!ModConfig.MASTER_TOGGLE.get() || !ModConfig.DEATH_LOCK.get()) return value;
+            if (!ProtectionBaseline.master() || !ProtectionBaseline.deathLock()) return value;
             if (!Environment.isAllowed(p)) return value;   // single-player only
-
-            if (DeathLock.isSuicidePending(p.getUUID())) return value;
-            if (DeathLock.isGranted(p)) return value;
 
             return (Object) Const.DEATH_LOCK_HEALTH;
         } catch (Throwable t) {

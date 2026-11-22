@@ -451,15 +451,14 @@ public class ModConfig {
         WORLD_GUARD = b.comment(
                 "When a mod tries to disconnect the player or stop the integrated server, the game",
                 "pauses and asks first, showing who asked and what reason they gave.",
-                "Off by default: a guard that answers a question with a paused screen is",
-                "intrusive, and being kicked out of a world is rare. Turn it on when it is not.",
+                "On by default since 1.9.2: a protection that guards against somebody else ending",
+                "your session is worthless switched off. The player's own quit is unaffected -",
+                "QuitIntent tells the two apart, so saving and quitting is still one click.",
                 "当模组试图把玩家踢出世界、或强制关闭内部服务器时，游戏暂停并先问一句，",
                 "同时显示是谁发起的、给的什么理由。",
-                "默认关闭：用暂停画面回答一个很少发生的问题是打扰。遇上了再打开。",
-                "Not hooked: the player's own quit path. Saving and quitting still works in one",
-                "click; only a stop that did not come from the player is questioned.",
-                "不拦玩家自己的退出：保存并退出照常一次点击完成，只询问不是玩家发起的停服。")
-                .define("enabled", false);
+                "1.9.2 起默认开启：拦的是「别人结束你的会话」，默认关着等于没有。",
+                "玩家自己的退出不受影响——QuitIntent 能把两者区分开，保存并退出仍是一次点击。")
+                .define("enabled", true);
         WORLD_GUARD_ASKED = b.comment(
                 "Whether the one-time in-game question has been shown. Written automatically.",
                 "是否已在游戏内问过一次。自动写入，不要手改。")

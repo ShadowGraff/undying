@@ -1,6 +1,7 @@
 package com.undying.core.mixin;
 
 import com.undying.core.DeathLock;
+import com.undying.core.ProtectionBaseline;
 import com.undying.core.Environment;
 import com.undying.core.ModConfig;
 import com.undying.core.ModLog;
@@ -50,20 +51,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(Entity.class)
 public abstract class MixinEntity {
 
-    /** Whether this player is currently authorised to die */
-    private static boolean undying$deathAllowed(ServerPlayer p) {
-        if (DeathLock.consumeSuicide(p.getUUID())) {
-            return true;  // our own /antigrief die
-        }
-        return DeathLock.isGranted(p);
-    }
 
     @Inject(method = "m_6074_", at = @At("HEAD"), cancellable = true, remap = false)
     private void undying$guardKill(CallbackInfo ci) {
         if (!undying$isGuarded()) return;
         ServerPlayer p = (ServerPlayer) (Object) this;
-        if (undying$deathAllowed(p)) return;
-
         ci.cancel();
         p.level().broadcastEntityEvent(p, (byte) 35);
         Notify.removalBlocked(p, "kill()");
@@ -82,8 +74,6 @@ public abstract class MixinEntity {
             return;
 
         ServerPlayer p = (ServerPlayer) (Object) this;
-        if (undying$deathAllowed(p)) return;
-
         ci.cancel();
         p.level().broadcastEntityEvent(p, (byte) 35);
 
@@ -114,7 +104,7 @@ public abstract class MixinEntity {
      * each injector guarantees both paths are covered.
      */
     private boolean undying$isGuarded() {
-        if (!ModConfig.MASTER_TOGGLE.get() || !ModConfig.DEATH_LOCK.get()) return false;
+        if (!ProtectionBaseline.master() || !ProtectionBaseline.deathLock()) return false;
         if (!((Object) this instanceof ServerPlayer p)) return false;
         return Environment.isAllowed(p);
     }
