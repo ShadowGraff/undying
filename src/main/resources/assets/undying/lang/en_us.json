@@ -52,6 +52,7 @@
   "undying.wb.need_world": "No world has been opened this session; enter one and come back",
   "undying.wb.in_world": "Restoring needs the world closed: save and quit, then open this page",
   "undying.wb.copy_now": "Back up now",
+  "undying.wb.copying": "Backing up...",
   "undying.wb.confirm_title": "Roll back to this moment?",
   "undying.wb.do_restore": "Restore",
   "undying.wb.restoring": "Restoring...",

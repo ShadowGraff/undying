@@ -108,7 +108,10 @@ public final class PlayerState {
      */
     public static void clear(UUID id) {
         PlayerState gone = BY_ID.get(id);
-        if (gone != null) gone.online = false;
+        if (gone != null) {
+            gone.online = false;
+            gone.baselineCaptured = false;   // next world entry captures again
+        }
         if (id != null) BY_ID.remove(id);
     }
 
@@ -218,6 +221,9 @@ public final class PlayerState {
     public KickGuard.Pending pendingKick;
 
     // ══════════════ Glow ══════════════
+
+    /** Whether the protection baseline was captured for this world entry. */
+    public boolean baselineCaptured;
 
     /** Whether the player is currently in a world; used only for eviction decisions. */
     public volatile boolean online;

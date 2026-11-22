@@ -49,7 +49,7 @@ class BackupServiceTest {
         write(world.resolve("level.dat"), "nbt-data");
         write(world.resolve("region/r.0.0.mca"), "chunkdata");
 
-        var result = BackupService.copyChanged(world, now(), 7, 0);
+        var result = BackupService.copyChanged(world, now(), 7, 0, 0);
 
         assertTrue(result.ran(), result.summaryZh());
         assertEquals(2, result.copied());
@@ -64,7 +64,7 @@ class BackupServiceTest {
     @Test
     void copiesActuallyLandOnDiskAtTheIndexedPath(@TempDir Path world) throws IOException {
         write(world.resolve("region/r.0.0.mca"), "chunkdata");
-        BackupService.copyChanged(world, now(), 7, 0);
+        BackupService.copyChanged(world, now(), 7, 0, 0);
 
         BackupVersion v = BackupStore.loadIndex(BackupStore.root(world)).versions().get(0);
         Path copy = BackupService.copyPath(BackupStore.root(world), v);
@@ -76,9 +76,9 @@ class BackupServiceTest {
     @Test
     void aSecondRunWithNoChangesDoesNothing(@TempDir Path world) throws IOException {
         write(world.resolve("level.dat"), "x");
-        BackupService.copyChanged(world, now(), 7, 0);
+        BackupService.copyChanged(world, now(), 7, 0, 0);
 
-        var second = BackupService.copyChanged(world, now() + 60, 7, 0);
+        var second = BackupService.copyChanged(world, now() + 60, 7, 0, 0);
 
         assertEquals(BackupService.Refusal.NOTHING_TO_DO, second.refusal());
         assertEquals(0, second.copied());
@@ -88,10 +88,10 @@ class BackupServiceTest {
     void aChangedFileGetsANewVersionAndTheOldOneStays(@TempDir Path world) throws IOException {
         Path level = world.resolve("level.dat");
         write(level, "version-one");
-        BackupService.copyChanged(world, now(), 7, 0);
+        BackupService.copyChanged(world, now(), 7, 0, 0);
 
         write(level, "version-two-longer");
-        BackupService.copyChanged(world, now() + 60, 7, 0);
+        BackupService.copyChanged(world, now() + 60, 7, 0, 0);
 
         var index = BackupStore.loadIndex(BackupStore.root(world)).versions();
         assertEquals(2, index.size(), "both versions must remain for a rollback");
@@ -103,7 +103,7 @@ class BackupServiceTest {
         write(level, "original");
         long mtimeBefore = Files.getLastModifiedTime(level).toMillis();
 
-        BackupService.copyChanged(world, now(), 7, 0);
+        BackupService.copyChanged(world, now(), 7, 0, 0);
 
         assertEquals("original", Files.readString(level));
         assertEquals(mtimeBefore, Files.getLastModifiedTime(level).toMillis(),
@@ -115,7 +115,7 @@ class BackupServiceTest {
         write(world.resolve("session.lock"), "42");
         write(world.resolve("level.dat"), "x");
 
-        BackupService.copyChanged(world, now(), 7, 0);
+        BackupService.copyChanged(world, now(), 7, 0, 0);
 
         var index = BackupStore.loadIndex(BackupStore.root(world)).versions();
         assertEquals(1, index.size());
@@ -128,7 +128,7 @@ class BackupServiceTest {
         for (int i = 0; i < 4; i++) {
             long at = now() + i * 60L;
             writeAt(level, "v" + i + "-padding", at);
-            BackupService.copyChanged(world, at, 2, 0);
+            BackupService.copyChanged(world, at, 2, 0, 0);
         }
 
         var index = BackupStore.loadIndex(BackupStore.root(world)).versions();
@@ -138,13 +138,13 @@ class BackupServiceTest {
     @Test
     void aBudgetThatCannotBeMetWritesNothingAndDeletesNothing(@TempDir Path world) throws IOException {
         write(world.resolve("level.dat"), "x");
-        BackupService.copyChanged(world, now(), 7, 0);
+        BackupService.copyChanged(world, now(), 7, 0, 0);
         long usedAfterFirst = BackupStore.usedBytes(BackupStore.root(world));
 
         write(world.resolve("big.mca"), "y".repeat(4096));
         // A limit below what is already used: every copy is the last copy of its file, so the
         // budget cannot be met and nothing may be removed.
-        var result = BackupService.copyChanged(world, now() + 60, 7, 10);
+        var result = BackupService.copyChanged(world, now() + 60, 7, 10, 0);
 
         assertNotNull(result.refusal());
         assertEquals(usedAfterFirst, BackupStore.usedBytes(BackupStore.root(world)),
@@ -153,12 +153,25 @@ class BackupServiceTest {
 
     @Test
     void anEmptyWorldIsNotAnError(@TempDir Path world) {
-        var result = BackupService.copyChanged(world, now(), 7, 0);
+        var result = BackupService.copyChanged(world, now(), 7, 0, 0);
         assertEquals(BackupService.Refusal.NOTHING_TO_DO, result.refusal());
         assertFalse(result.ran());
     }
 
     // ══════════ stableSince ══════════
+
+    @Test
+    void theServiceItselfSkipsFilesThatWereJustWritten(@TempDir Path world) throws IOException {
+        // The quiet window is the difference between "a copy" and "half a region file with a
+        // matching hash". Default is 10 s; a file written this second must wait.
+        // mtime must be *at* now() for this to test the quiet window: writeAt() sets it,
+        // plain write() would leave the real clock's timestamp, which is decades away from the
+        // fixed now() used here and would therefore look "quiet".
+        writeAt(world.resolve("level.dat"), "fresh", now());
+        var result = BackupService.copyChanged(world, now(), 7, 0);
+        assertEquals(BackupService.Refusal.NOTHING_TO_DO, result.refusal(),
+                "a file touched this second must not be copied with the default quiet window");
+    }
 
     @Test
     void filesTouchedJustNowAreLeftForTheNextRound() {

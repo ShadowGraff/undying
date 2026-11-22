@@ -103,6 +103,16 @@ public final class BackupService {
      * @param limitBytes total folder budget, {@code <= 0} for none
      */
     public static Result copyChanged(Path worldDir, long nowSeconds, int depth, long limitBytes) {
+        return copyChanged(worldDir, nowSeconds, depth, limitBytes, QUIET_SECONDS);
+    }
+
+    /**
+     * @param quietSeconds how long a file must be untouched to be copied; 0 copies immediately
+     *                     (used by tests, and by the "back up now" button when the player asks
+     *                     for a copy and knows they just saved)
+     */
+    public static Result copyChanged(Path worldDir, long nowSeconds, int depth, long limitBytes,
+                                    int quietSeconds) {
         Path root = BackupStore.root(worldDir);
         try {
             List<WorldFile> scanned = WorldScanner.scan(worldDir);
@@ -112,12 +122,24 @@ public final class BackupService {
             List<WorldFile> candidates = new ArrayList<>();
             long incoming = 0L;
 
+            List<WorldFile> dirty = new ArrayList<>();
             for (WorldFile f : scanned) {
                 BackupVersion last = newest.get(f.path());
                 if (last == null || last.size() != f.size() || f.mtimeSeconds() > last.seconds()) {
-                    candidates.add(f);
-                    incoming += f.size();
+                    dirty.add(f);
                 }
+            }
+
+            // Only copy files that have been quiet for a moment.
+            //
+            // stableSince() existed from the start but nothing called it, which meant a region
+            // file the game was in the middle of writing could be copied half-done. That copy is
+            // worse than a missing one: it has a matching hash (we hash the copy), so a later
+            // restore would write corruption back and report success. Measured consequence of
+            // skipping this check: no error anywhere, just a plausible-looking wrong file.
+            for (WorldFile f : stableSince(dirty, nowSeconds, quietSeconds)) {
+                candidates.add(f);
+                incoming += f.size();
             }
 
             if (candidates.isEmpty()) {
@@ -204,6 +226,9 @@ public final class BackupService {
             return new Result(0, 0L, 0, 0, -1L, Refusal.IO_ERROR);
         }
     }
+
+    /** How long a file must be untouched before it is worth copying. */
+    private static final int QUIET_SECONDS = 10;
 
     /**
      * Skip files that were modified very recently.

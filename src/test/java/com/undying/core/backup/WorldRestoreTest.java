@@ -40,10 +40,10 @@ class WorldRestoreTest {
         Path level = world.resolve("level.dat");
 
         writeAt(level, "OLD-CONTENT", t1);
-        BackupService.copyChanged(world, t1, 7, 0);
+        BackupService.copyChanged(world, t1, 7, 0, 0);
 
         writeAt(level, "NEW-CONTENT-LONGER", t1 + 60);
-        BackupService.copyChanged(world, t1 + 60, 7, 0);
+        BackupService.copyChanged(world, t1 + 60, 7, 0, 0);
 
         return t1;
     }

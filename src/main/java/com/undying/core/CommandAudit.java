@@ -37,7 +37,12 @@ public final class CommandAudit {
         try {
             if (server == null || command == null || command.isBlank()) return;
             if (!ModConfig.COMMAND_AUDIT.get()) return;
-            if (!Environment.isAllowed(server)) return;   // single-player only
+            if (!Environment.isAllowed(server)) {
+                // Logged because "audit silently does nothing" and "audit was never called" look
+                // identical from the outside, and their fixes are completely different.
+                IntegrityGuard.LOGGER.info("[audit] skipped: environment gate closed");
+                return;
+            }
 
             String trimmed = command.trim();
             IntegrityGuard.LOGGER.info("[audit] {} (fromPlayer={})", trimmed, fromPlayer);

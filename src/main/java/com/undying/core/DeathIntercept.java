@@ -34,8 +34,17 @@ public final class DeathIntercept {
         if (!Environment.isAllowed(p)) return false;
 
         // Everything else: rewind the death flow and refuse it.
-        DeathLock.exitState(p);
-        Notify.removalBlocked(p, "die()");
-        return true;
+        //
+        // If the rewind itself fails, the death is allowed through. A bug in here must not be
+        // able to make the player permanently unkillable - "the protection broke, so you cannot
+        // die" is the worst possible failure mode for a mod whose whole promise is control.
+        try {
+            DeathLock.exitState(p);
+            Notify.removalBlocked(p, "die()");
+            return true;
+        } catch (Throwable t) {
+            ModLog.swallowed("DeathIntercept.exitState", t);
+            return false;
+        }
     }
 }

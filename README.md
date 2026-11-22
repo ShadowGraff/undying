@@ -156,7 +156,7 @@ current implementation:
 | 环境门禁调用点 / Environment gate call sites | 31 |
 | 自检探针 / Self-check probes | 10 |
 | 主要类 / Main classes | 112（不含 17 个 mixin / excluding the 17 mixins） |
-| 单元测试 / Unit tests | 231（28 个测试类 / 28 test classes） |
+| 单元测试 / Unit tests | 232（28 个测试类 / 28 test classes） |
 
 **一个死亡要真正发生，需要上述拦截点同时失效。** 每个点都在代码里独立实现，不共享同一个开关。
 

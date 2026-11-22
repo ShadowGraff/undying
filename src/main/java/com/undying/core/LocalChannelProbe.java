@@ -35,24 +35,47 @@ public final class LocalChannelProbe {
     private static volatile Field channelField;
     private static volatile boolean resolved;
 
+    /** Reuse window, in ticks. A channel does not change mid-session often enough to matter. */
+    private static final int CACHE_TICKS = 20;
+
+    private static volatile java.util.UUID cachedId;
+    private static volatile int cachedTick = -1_000_000;
+    private static volatile Boolean cachedValue;
+
     /** @return true/false when known, null when it cannot be determined */
     public static Boolean isLocal(ServerPlayer p) {
         try {
+            // Called from every gate, which means several times per damage event. Two reflective
+            // field reads each time is real overhead for a value that cannot change between
+            // ticks, so it is cached for a second.
+            if (p != null && p.getUUID().equals(cachedId) && p.tickCount - cachedTick < CACHE_TICKS) {
+                return cachedValue;
+            }
             if (p == null || p.connection == null) return null;
             resolve(p.connection.getClass());
             Field conn = connectionField;
             Field chan = channelField;
             if (conn == null || chan == null) return null;
 
+            Boolean result = compute(p, conn, chan);
+            cachedId = p.getUUID();
+            cachedTick = p.tickCount;
+            cachedValue = result;
+            return result;
+        } catch (Throwable t) {
+            ModLog.swallowed("LocalChannelProbe.isLocal", t);
+            return null;
+        }
+    }
+
+    private static Boolean compute(ServerPlayer p, Field conn, Field chan) throws Exception {
+        {
             Object netConnection = conn.get(p.connection);
             if (netConnection == null) return null;
             Object channel = chan.get(netConnection);
             if (channel == null) return null;
 
             return channel.getClass().getName().startsWith("io.netty.channel.local.");
-        } catch (Throwable t) {
-            ModLog.swallowed("LocalChannelProbe.isLocal", t);
-            return null;
         }
     }
 

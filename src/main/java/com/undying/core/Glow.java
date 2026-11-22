@@ -51,7 +51,8 @@ public final class Glow {
 
             PlayerState st = PlayerState.of(p);
             st.glowActive = true;
-            st.glowUntilTick = seconds > 0 ? p.tickCount + seconds * 20 : 0;
+            int now = p.server != null ? p.server.getTickCount() : p.tickCount;   // survives respawn
+            st.glowUntilTick = seconds > 0 ? now + seconds * 20 : 0;
             if (st.glowTargets == null) st.glowTargets = new HashSet<>();
 
             int marked = apply(p, st);
@@ -102,7 +103,8 @@ public final class Glow {
         try {
             if (p == null) return;
             // Cheapest test first: 19 out of 20 ticks return without touching player state.
-            if (p.tickCount % Const.TICKS_PER_SECOND != 0) return;
+            int nowTick = p.server != null ? p.server.getTickCount() : p.tickCount;
+            if (nowTick % Const.TICKS_PER_SECOND != 0) return;
 
             PlayerState st = PlayerState.of(p);
             if (!st.glowActive) return;
@@ -111,7 +113,7 @@ public final class Glow {
                 stop(p, "开关关闭或环境不允许", "switch off or gate closed");
                 return;
             }
-            if (st.glowUntilTick > 0 && p.tickCount > st.glowUntilTick) {
+            if (st.glowUntilTick > 0 && nowTick > st.glowUntilTick) {
                 stop(p, "时间到", "time up");
                 return;
             }

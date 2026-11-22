@@ -32,9 +32,11 @@ public abstract class MixinPlayerList {
      */
     private boolean undying$serverAllowed() {
         try {
-            // PlayerList has a `server` field in 1.20.1 (SRG: f_11196_)
+            // 2026-11-22: this used to read f_11196_, which is `players`; `server` is f_11195_.
+            // The cast therefore always failed, undying$serverAllowed() always returned false, and
+            // the OP lock never engaged. Found by an external audit, not by the build.
             java.lang.reflect.Field f = net.minecraft.server.players.PlayerList.class
-                    .getDeclaredField("f_11196_");
+                    .getDeclaredField("f_11195_");
             f.setAccessible(true);
             Object server = f.get(this);
             if (server instanceof net.minecraft.server.MinecraftServer ms) {

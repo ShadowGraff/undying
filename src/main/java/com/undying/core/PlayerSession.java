@@ -21,8 +21,19 @@ public final class PlayerSession {
         // ── 1. Set up protection first ──
         HiddenSlots.init(p);          // hidden slots: totem / ward shield / hidden armor
         SpawnProtection.onJoin(p);    // spawn protection: record the moment of joining the world
-        ProtectionBaseline.capture();
-        PlayerState.of(p).online = true;
+
+        // Capture the baseline ONCE per world entry, not on every EntityJoinLevelEvent.
+        //
+        // onJoin also fires when the player changes dimension or respawns. Re-capturing there
+        // would overwrite a switch the player just changed in the panel with whatever the config
+        // happened to say at that instant - which is exactly the "I turned it off and it came
+        // back" bug, only with the sign flipped.
+        PlayerState state = PlayerState.of(p);
+        if (!state.baselineCaptured) {
+            ProtectionBaseline.capture();
+            state.baselineCaptured = true;
+        }
+        state.online = true;
         IntegrityGuard.onJoin(p);     // config snapshot + structural audit + self-check report
 
         // ── 2. Then hand out items ──

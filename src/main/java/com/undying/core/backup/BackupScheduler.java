@@ -117,6 +117,12 @@ public final class BackupScheduler {
 
     /** Run one backup now, on the calling thread. Used by the screen's "备份一次" button. */
     public static BackupService.Result runNow(Path worldDir) {
+        // Manual and scheduled runs write the same index; letting them overlap is how the
+        // "-1" suffix on a copy name gets orphaned (see the index/path mismatch note).
+        if (!BUSY.compareAndSet(false, true)) {
+            return new BackupService.Result(0, 0L, 0, 0, BackupStore.usedBytes(BackupStore.root(worldDir)),
+                    BackupService.Refusal.NOTHING_TO_DO);
+        }
         try {
             return BackupService.copyChanged(worldDir,
                     System.currentTimeMillis() / 1000L,
@@ -125,6 +131,8 @@ public final class BackupScheduler {
         } catch (Throwable t) {
             ModLog.swallowed("BackupScheduler.runNow", t);
             return new BackupService.Result(0, 0L, 0, 0, -1L, BackupService.Refusal.IO_ERROR);
+        } finally {
+            BUSY.set(false);
         }
     }
 

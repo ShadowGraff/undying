@@ -62,10 +62,12 @@ public final class BackupStore {
     }
 
     /** Write the index atomically. Throws: the caller must know the write failed. */
-    public static void saveIndex(Path root, List<BackupVersion> versions) throws IOException {
+    public static synchronized void saveIndex(Path root, List<BackupVersion> versions) throws IOException {
         Files.createDirectories(root);
         Path target = indexFile(root);
-        Path tmp = root.resolve(INDEX_NAME + ".tmp");
+        // Unique temp name: two runs writing the same ".tmp" would let one move a half-written
+        // file into place while the other is still filling it.
+        Path tmp = root.resolve(INDEX_NAME + "." + System.nanoTime() + ".tmp");
 
         Files.writeString(tmp, BackupIndexCodec.encode(versions), StandardCharsets.UTF_8);
 
@@ -86,8 +88,10 @@ public final class BackupStore {
      */
     public static long usedBytes(Path root) {
         if (root == null || !Files.isDirectory(root)) return 0L;
+        Path aside = root.resolve("pre-restore");
         try (Stream<Path> walk = Files.walk(root)) {
-            return walk.filter(p -> Files.isRegularFile(p))
+            return walk.filter(p -> !p.startsWith(aside))       // undo copies are not history
+                    .filter(p -> Files.isRegularFile(p))
                     .mapToLong(p -> {
                         try {
                             return Files.size(p);
@@ -96,6 +100,8 @@ public final class BackupStore {
                         }
                     })
                     .sum();
+        } catch (OutOfMemoryError oom) {
+            throw oom;    // never turn resource exhaustion into "folder is empty"
         } catch (Throwable t) {
             return -1L;   // caller treats negative as "unknown", same as free space
         }

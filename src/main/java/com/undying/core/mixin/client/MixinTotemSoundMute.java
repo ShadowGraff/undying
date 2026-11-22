@@ -48,7 +48,12 @@ public abstract class MixinTotemSoundMute {
     /** Id of the totem of undying sound. Compared as a plain string to avoid depending on how Holder resolves values. */
     private static final String TOTEM_USE_ID = "minecraft:item.totem.use";
 
-    @Inject(method = "m_120274_", at = @At("HEAD"), cancellable = true, remap = false)
+    // 2026-11-22: this used to target m_120274_, which the mapping says is stop(SoundInstance) -
+    // so the mute had never silenced anything, and nothing ever reported it. play() is m_120312_.
+    // A wrong SRG name inside the right class is invisible to the build; only an external audit
+    // found it.
+
+    @Inject(method = "m_120312_", at = @At("HEAD"), cancellable = true, remap = false)
     private void undying$muteTotemSound(SoundInstance sound, CallbackInfo ci) {
         try {
             if (sound == null || sound.getLocation() == null) return;

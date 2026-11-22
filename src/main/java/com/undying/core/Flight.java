@@ -43,8 +43,9 @@ public final class Flight {
             // is the only thing that noticed: a second packet in the same 200 ms would take the
             // player straight back up after they asked to land, which is exactly the "cannot
             // cancel flight" report this guard exists to rule out.
-            if (st.flightLastToggleTick != 0 && p.tickCount - st.flightLastToggleTick < 4) return;
-            st.flightLastToggleTick = p.tickCount;
+            int now = p.server != null ? p.server.getTickCount() : p.tickCount;   // survives respawn
+            if (st.flightLastToggleTick != 0 && now - st.flightLastToggleTick < 4) return;
+            st.flightLastToggleTick = now;
 
             // "Landing" only applies to flight this mod granted. If the player is airborne
             // because of someone else's gear, the first double-tap takes over instead of

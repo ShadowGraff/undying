@@ -38,6 +38,9 @@ public class BackupScreen extends Screen {
     private String status = "";
     private boolean inWorld;
 
+    /** Non-null while a manual backup runs on a worker; the screen disables itself meanwhile. */
+    private java.util.concurrent.CompletableFuture<com.undying.core.backup.BackupService.Result> running;
+
     public BackupScreen(Screen parent) {
         super(Component.translatable("undying.wb.title"));
         this.parent = parent;
@@ -79,20 +82,58 @@ public class BackupScreen extends Screen {
         }
 
         int bottom = this.height - 44;
-        this.addRenderableWidget(Button.builder(Component.translatable("undying.wb.copy_now"),
+        Button copy = Button.builder(
+                        Component.translatable(running != null ? "undying.wb.copying" : "undying.wb.copy_now"),
                         b -> copyNow())
-                .bounds(cx - 152, bottom, 148, 20).build());
+                .bounds(cx - 152, bottom, 148, 20).build();
+        copy.active = running == null;
+        this.addRenderableWidget(copy);
         this.addRenderableWidget(Button.builder(Component.translatable("gui.back"),
                         b -> this.minecraft.setScreen(parent))
                 .bounds(cx + 4, bottom, 148, 20).build());
     }
 
+    /**
+     * Copy now, off the render thread.
+     *
+     * <p>Same reason as the restore path: copying a hundred region files on the render thread
+     * freezes the game with no cursor and no way to tell working from hung. The scheduler already
+     * owns a background worker, so this only has to wait for it.
+     */
     private void copyNow() {
         Path world = ClientWorldMemory.last();
-        if (world == null) return;
-        var result = BackupScheduler.runNow(world);
-        status = result.summaryZh();
+        if (world == null || running != null) return;
+        running = java.util.concurrent.CompletableFuture.supplyAsync(() -> BackupScheduler.runNow(world));
+        status = Component.translatable("undying.wb.copying").getString();
         this.rebuildWidgets();
+    }
+
+    @Override
+    public void tick() {
+        if (running == null || !running.isDone()) return;
+        try {
+            var result = running.join();
+            if (result != null) status = result.summaryZh();
+            if (result != null && result.copied() > 0) refreshPoints();
+        } catch (Throwable t) {
+            ModLog.swallowed("BackupScreen.tick", t);
+            status = Component.translatable("undying.wb.failed").getString();
+        }
+        running = null;
+        this.rebuildWidgets();
+    }
+
+    private void refreshPoints() {
+        Path world = ClientWorldMemory.last();
+        if (world == null) return;
+        try {
+            points = com.undying.core.backup.TimePoints.list(
+                    com.undying.core.backup.BackupStore.loadIndex(
+                            com.undying.core.backup.BackupStore.root(world)).versions(),
+                    MAX_POINTS, 300);
+        } catch (Throwable t) {
+            ModLog.swallowed("BackupScreen.refreshPoints", t);
+        }
     }
 
     @Override

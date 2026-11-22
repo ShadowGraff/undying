@@ -52,6 +52,7 @@
   "undying.wb.need_world": "本会话还没进过世界，先进入一次再回来",
   "undying.wb.in_world": "世界里不能恢复：请保存并退出世界后再打开这一页",
   "undying.wb.copy_now": "立即备份一次",
+  "undying.wb.copying": "备份中…",
   "undying.wb.confirm_title": "回滚到这个时间点？",
   "undying.wb.do_restore": "确认恢复",
   "undying.wb.restoring": "恢复中…",

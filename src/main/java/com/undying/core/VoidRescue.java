@@ -26,8 +26,11 @@ public final class VoidRescue {
         // One rescue per second. Without this, a rescue that fails to move the player (blocked,
         // wrong dimension) re-fires every tick and floods both the log and the chat line.
         PlayerState st = PlayerState.of(p);
-        if (p.tickCount - st.lastVoidRescueTick < 20) return true;
-        st.lastVoidRescueTick = p.tickCount;
+        // Server tick, not the player's own counter: tickCount restarts at 0 on respawn and on
+        // dimension change, which turns a 20-tick cooldown into "never again" (negative delta).
+        int now = p.server != null ? p.server.getTickCount() : p.tickCount;
+        if (now - st.lastVoidRescueTick < 20) return true;
+        st.lastVoidRescueTick = now;
 
         ServerLevel here = p.serverLevel();
         BlockPos respawn = p.getRespawnPosition();
