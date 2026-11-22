@@ -55,6 +55,11 @@ public final class ProtectionBaseline {
     /** Take (or retake) the baseline. Called on join and when the player changes it themselves. */
     public static synchronized void capture() {
         values = Values.capture();
+        // Logged on purpose: "which baseline is in force" is the first question whenever a
+        // protection seems to ignore the panel, and answering it after the fact is impossible.
+        IntegrityGuard.LOGGER.info("[baseline] captured: master={} deathLock={} kill={} hidden={} totem={} void={}",
+                values.master(), values.deathLock(), values.killBlocker(),
+                values.hiddenGear(), values.totem(), values.voidRescue());
     }
 
     public static synchronized void clear() {

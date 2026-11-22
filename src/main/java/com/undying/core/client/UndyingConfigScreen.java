@@ -172,6 +172,19 @@ public class UndyingConfigScreen extends Screen {
 
         ModConfig.save();
 
+        // Re-capture the baseline here as well, not only over the network.
+        //
+        // Single-player client and integrated server share one JVM and one ModConfig instance, so
+        // this is the same object the server reads. Relying on the packet alone meant that if it
+        // was dropped (or handled a tick late), the panel showed the switch off while the gates
+        // still used the old baseline - measured as "I turned immortal mode off and still could
+        // not die". Capturing locally removes that dependency entirely.
+        try {
+            com.undying.core.ProtectionBaseline.capture();
+        } catch (Throwable e) {
+            com.undying.core.ModLog.swallowed("UndyingConfigScreen.captureBaseline", e);
+        }
+
         // Tell the integrity guard this was the player's own hand, not an external mod. Without
         // this, turning a protected child switch off while immortal mode is on was undone
         // within two seconds by the guard's "repair" step — the switch refused to stay off.

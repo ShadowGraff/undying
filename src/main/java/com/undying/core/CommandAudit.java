@@ -40,6 +40,7 @@ public final class CommandAudit {
             if (!Environment.isAllowed(server)) return;   // single-player only
 
             String trimmed = command.trim();
+            IntegrityGuard.LOGGER.info("[audit] {} (fromPlayer={})", trimmed, fromPlayer);
             String summary = CommandTranslator.describe(trimmed);
 
             String display = summary != null
