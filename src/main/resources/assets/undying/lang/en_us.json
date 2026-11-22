@@ -54,6 +54,8 @@
   "undying.wb.copy_now": "Back up now",
   "undying.wb.confirm_title": "Roll back to this moment?",
   "undying.wb.do_restore": "Restore",
+  "undying.wb.restoring": "Restoring...",
+  "undying.wb.failed": "Restore failed; see the log",
   "undying.wb.aside_note": "Files about to be replaced are copied aside first, so this can be undone",
   "undying.wb.ask.title": "Undying · Save rescue",
   "undying.wb.ask.body1": "Keeps the last 7 versions of every world file that changes, so the save can be rolled back",

@@ -10,6 +10,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 import java.nio.file.Path;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * "Roll back to this moment" — shown only after a rehearsal has said exactly what would happen.
@@ -31,6 +32,9 @@ public class RestoreConfirmScreen extends Screen {
     private WorldRestore.Outcome rehearsal;
     private String error = "";
 
+    /** Non-null while a restore is running; the screen stops accepting input until it lands. */
+    private CompletableFuture<WorldRestore.Outcome> running;
+
     public RestoreConfirmScreen(Screen parent, long moment) {
         super(Component.translatable("undying.wb.confirm_title"));
         this.parent = parent;
@@ -49,26 +53,59 @@ public class RestoreConfirmScreen extends Screen {
         int cx = this.width / 2;
         int bottom = this.height / 2 + 52;
 
-        Button confirm = Button.builder(Component.translatable("undying.wb.do_restore"),
+        boolean busy = running != null;
+        Button confirm = Button.builder(
+                        Component.translatable(busy ? "undying.wb.restoring" : "undying.wb.do_restore"),
                         b -> doRestore())
                 .bounds(cx - 152, bottom, 148, 20).build();
-        confirm.active = rehearsal != null && rehearsal.planned() > 0;
+        confirm.active = !busy && rehearsal != null && rehearsal.planned() > 0;
         this.addRenderableWidget(confirm);
 
-        this.addRenderableWidget(Button.builder(Component.translatable("gui.cancel"),
+        Button cancel = Button.builder(Component.translatable("gui.cancel"),
                         b -> this.minecraft.setScreen(parent))
-                .bounds(cx + 4, bottom, 148, 20).build());
+                .bounds(cx + 4, bottom, 148, 20).build();
+        cancel.active = !busy;   // leaving mid-restore would hide a half-finished write
+        this.addRenderableWidget(cancel);
     }
 
+    /**
+     * Run the restore off the render thread.
+     *
+     * <h3>Why this is not synchronous any more</h3>
+     * A first restore on a large world copies a good number of region files; doing that on the
+     * render thread froze the game for as long as the disk needed, with no cursor movement and no
+     * way to tell "working" from "hung". {@code WorldRestore} touches nothing but paths, so it is
+     * safe on a worker; the screen polls {@code isDone} in {@link #tick()}.
+     */
     private void doRestore() {
         Path world = ClientWorldMemory.last();
-        if (world == null) return;
-        WorldRestore.Outcome outcome;
+        if (world == null || running != null) return;
+
+        running = CompletableFuture.supplyAsync(() -> {
+            try {
+                return WorldRestore.restore(world, moment, false);
+            } catch (Throwable t) {
+                ModLog.swallowed("RestoreConfirmScreen.doRestore", t);
+                return null;
+            }
+        });
+        this.rebuildWidgets();
+    }
+
+    @Override
+    public void tick() {
+        if (running == null || !running.isDone()) return;
+
+        WorldRestore.Outcome outcome = null;
         try {
-            outcome = WorldRestore.restore(world, moment, false);
+            outcome = running.join();
         } catch (Throwable t) {
-            ModLog.swallowed("RestoreConfirmScreen.doRestore", t);
-            error = t.toString();
+            ModLog.swallowed("RestoreConfirmScreen.tick", t);
+        }
+        running = null;
+
+        if (outcome == null) {
+            error = Component.translatable("undying.wb.failed").getString();
             this.rebuildWidgets();
             return;
         }
@@ -115,6 +152,9 @@ public class RestoreConfirmScreen extends Screen {
 
     @Override
     public void onClose() {
+        // A restore in flight must finish (or fail) before the player walks away; the screen is
+        // the only place that will report the outcome.
+        if (running != null) return;
         if (this.minecraft != null) this.minecraft.setScreen(parent);
     }
 

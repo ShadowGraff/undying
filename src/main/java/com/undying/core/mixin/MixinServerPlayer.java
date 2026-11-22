@@ -40,7 +40,7 @@ public abstract class MixinServerPlayer {
 
     @Inject(method = "m_143403_", at = @At("HEAD"), cancellable = true, remap = false)
     private void undying$onSetGameMode(GameType gt, CallbackInfoReturnable<Boolean> cir) {
-        if (!ProtectionBaseline.master() || !ModConfig.GAMEMODE_LOCK.get()) return;
+        if (!ProtectionBaseline.master() || !ProtectionBaseline.gameModeLock()) return;
         ServerPlayer self = (ServerPlayer) (Object) this;
         if (!Environment.isAllowed(self)) return;   // single-player only
         // A change the player asked for in our own panel is not tampering. Checked before the

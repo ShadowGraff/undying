@@ -82,7 +82,7 @@ public final class TickTasks {
 
     /** Periodic OP4 verification: prevents other mods from quietly demoting/revoking the permission level */
     private static void checkOp(ServerPlayer p, boolean master) {
-        if (!master || !ModConfig.OP_LOCK.get() || !p.server.isSingleplayer()) return;
+        if (!master || !ProtectionBaseline.opLock() || !p.server.isSingleplayer()) return;
         if (p.tickCount % Const.OP_CHECK_INTERVAL != 0) return;
         if (p.server.getPlayerList().isOp(p.getGameProfile())) return;
 

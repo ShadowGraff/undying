@@ -19,7 +19,7 @@ public final class PermaEffects {
     private PermaEffects() {}
 
     public static void tick(ServerPlayer p, boolean master) {
-        if (!master || !ModConfig.PERMA_EFFECTS.get()) return;
+        if (!master || !ProtectionBaseline.permaEffects()) return;
 
         // All four are present → return early. This path runs every tick, so do the cheapest check first
         if (p.getEffect(MobEffects.ABSORPTION) != null

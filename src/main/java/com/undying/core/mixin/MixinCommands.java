@@ -115,7 +115,7 @@ public abstract class MixinCommands {
     /** Whether this command is a lethal one that the blocker is supposed to stop. */
     @Unique
     private static boolean undying$shouldBlockKill(CommandSourceStack src, String cmd) {
-        if (!ProtectionBaseline.master() || !ModConfig.KILL_BLOCKER.get()) return false;
+        if (!ProtectionBaseline.master() || !ProtectionBaseline.killBlocker()) return false;
         if (!com.undying.core.Environment.isAllowed(src.getServer())) return false;   // single-player only
         return undying$isKillInvocation(cmd);
     }

@@ -31,7 +31,7 @@ public abstract class MixinAntiTamper {
     @Unique
     @Inject(method = "m_7292_", at = @At("HEAD"), cancellable = true, remap = false)
     private void undying$guardHarmfulEffect(MobEffectInstance effect, CallbackInfoReturnable<Boolean> cir) {
-        if (!ProtectionBaseline.master() || !ModConfig.ANTI_TAMPER.get()) return;
+        if (!ProtectionBaseline.master() || !ProtectionBaseline.antiTamper()) return;
         if (!((Object) this instanceof ServerPlayer p)) return;
         if (!com.undying.core.Environment.isAllowed(p)) return;   // single-player only
         if (effect == null) return;

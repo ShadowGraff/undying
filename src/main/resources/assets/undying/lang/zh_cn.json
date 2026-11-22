@@ -54,6 +54,8 @@
   "undying.wb.copy_now": "立即备份一次",
   "undying.wb.confirm_title": "回滚到这个时间点？",
   "undying.wb.do_restore": "确认恢复",
+  "undying.wb.restoring": "恢复中…",
+  "undying.wb.failed": "恢复失败，详情见日志",
   "undying.wb.aside_note": "恢复前会把将被覆盖的文件另存一份，可撤销",
   "undying.wb.ask.title": "Undying · 存档救援",
   "undying.wb.ask.body1": "可以把世界文件按变动各留 7 份旧版，出事时回滚到之前某一刻",

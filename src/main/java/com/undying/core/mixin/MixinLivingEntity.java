@@ -58,7 +58,7 @@ public abstract class MixinLivingEntity {
     //    restore are all active); there is simply no visual effect.
     @Inject(method = "m_21262_", at = @At("HEAD"), remap = false)
     private void undying$ensureTotem(DamageSource src, CallbackInfoReturnable<Boolean> cir) {
-        if (!ProtectionBaseline.master() || !ModConfig.TOTEM_PROTECT.get()) return;
+        if (!ProtectionBaseline.master() || !ProtectionBaseline.totem()) return;
         LivingEntity self = (LivingEntity) (Object) this;
         if (!(self instanceof ServerPlayer p)) return;
         if (!Environment.isAllowed(p)) return;   // single-player only
@@ -125,7 +125,7 @@ public abstract class MixinLivingEntity {
         if (p.isDeadOrDying()) return;
         // Health at or below the floor → this hit would be lethal → refuse it entirely
         if (p.getHealth() <= Const.DEATH_LOCK_HEALTH) {
-            if (ModConfig.HIDDEN_GEAR.get() && com.undying.core.HiddenSlots.hasShield(p.getUUID())) {
+            if (ProtectionBaseline.hiddenGear() && com.undying.core.HiddenSlots.hasShield(p.getUUID())) {
                 Thorns.apply(p, src);
             }
             p.level().broadcastEntityEvent(p, (byte) 35);
@@ -235,7 +235,7 @@ public abstract class MixinLivingEntity {
         if (!ProtectionBaseline.master()) return;
         if (!((Object) this instanceof ServerPlayer p)) return;
         if (!Environment.isAllowed(p)) return;   // single-player only
-        boolean shielded = ModConfig.HIDDEN_GEAR.get() && com.undying.core.HiddenSlots.hasShield(p.getUUID());
+        boolean shielded = ProtectionBaseline.hiddenGear() && com.undying.core.HiddenSlots.hasShield(p.getUUID());
         boolean spawning = com.undying.core.SpawnProtection.isProtected(p);
         if (!shielded && !spawning) return;
         // Run the thorns reflect manually before full immunity: otherwise, once hurt is
@@ -249,7 +249,7 @@ public abstract class MixinLivingEntity {
     @Unique
     @Inject(method = "m_21230_", at = @At("RETURN"), cancellable = true, remap = false)
     private void undying$hiddenArmorValue(CallbackInfoReturnable<Integer> cir) {
-        if (!ProtectionBaseline.master() || !ModConfig.HIDDEN_GEAR.get()) return;
+        if (!ProtectionBaseline.master() || !ProtectionBaseline.hiddenGear()) return;
         if (!((Object) this instanceof ServerPlayer p)) return;
         if (!Environment.isAllowed(p)) return;   // single-player only
         if (!com.undying.core.HiddenSlots.hasArmor(p.getUUID())) return;

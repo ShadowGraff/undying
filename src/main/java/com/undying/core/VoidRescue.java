@@ -20,7 +20,7 @@ public final class VoidRescue {
      *         already been teleported away)
      */
     public static boolean tick(ServerPlayer p, boolean master) {
-        if (!master || !ModConfig.VOID_RESCUE.get()) return false;
+        if (!master || !ProtectionBaseline.voidRescue()) return false;
         if (p.getY() >= Const.VOID_Y_THRESHOLD) return false;
 
         // One rescue per second. Without this, a rescue that fails to move the player (blocked,

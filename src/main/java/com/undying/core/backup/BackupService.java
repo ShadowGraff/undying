@@ -170,13 +170,24 @@ public final class BackupService {
                     index.add(v);
                     copied++;
                     copiedBytes += f.size();
-
-                    // Recorded immediately: a copy nobody knows about is space that can never
-                    // be restored from, and it would survive every future prune.
-                    BackupStore.saveIndex(root, index);
                 } catch (Throwable t) {
                     skipped++;
                 }
+            }
+
+            // Index written once, at the end.
+            //
+            // It used to be written after every single file, on the theory that an unrecorded
+            // copy is space nobody can restore from. True, but the price was rewriting the whole
+            // index per file - O(n^2) writes on a run that touches a hundred files, all on a
+            // background thread competing with the game for disk. A crash in the middle now
+            // leaves orphan copies instead: they cost disk space and nothing else, because the
+            // index is what decides what can be restored.
+            try {
+                BackupStore.saveIndex(root, index);
+            } catch (Throwable t) {
+                return new Result(copied, copiedBytes, skipped, pruned, BackupStore.usedBytes(root),
+                        Refusal.IO_ERROR);
             }
 
             // Depth is applied again now that this run's copies exist. Doing it before the copy

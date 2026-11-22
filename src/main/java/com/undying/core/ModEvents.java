@@ -131,7 +131,7 @@ public final class ModEvents {
     @SubscribeEvent
     public void onBreathe(LivingBreatheEvent event) {
         try {
-            if (!ModConfig.MASTER_TOGGLE.get() || !ModConfig.HIDDEN_GEAR.get()) return;
+            if (!ProtectionBaseline.master() || !ProtectionBaseline.hiddenGear()) return;
             if (!(event.getEntity() instanceof ServerPlayer p)) return;
 
             int level = HiddenEnchants.respirationLevel(p.getUUID());
@@ -155,7 +155,7 @@ public final class ModEvents {
     @SubscribeEvent
     public void onBreakSpeed(PlayerEvent.BreakSpeed event) {
         try {
-            if (!ModConfig.MASTER_TOGGLE.get() || !ModConfig.HIDDEN_GEAR.get()) return;
+            if (!ProtectionBaseline.master() || !ProtectionBaseline.hiddenGear()) return;
             if (!(event.getEntity() instanceof ServerPlayer p)) return;
             if (!p.isUnderWater()) return;
             if (HiddenEnchants.aquaAffinityLevel(p.getUUID()) <= 0) return;

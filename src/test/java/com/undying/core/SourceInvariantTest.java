@@ -94,9 +94,22 @@ class SourceInvariantTest {
             mixins = walk.filter(p -> p.toString().endsWith(".java")).toList();
         }
 
+        // Gate files outside the mixin package that must use the same rule.
+        List<Path> gates = List.of(
+                MAIN.resolve("TickTasks.java"),
+                MAIN.resolve("ModEvents.java"),
+                MAIN.resolve("PermaEffects.java"),
+                MAIN.resolve("VoidRescue.java"),
+                MAIN.resolve("Flight.java"),
+                MAIN.resolve("Glow.java"));
+
         List<String> offenders = new ArrayList<>();
-        offenders.addAll(find(mixins, "ModConfig.MASTER_TOGGLE.get()"));
-        offenders.addAll(find(mixins, "ModConfig.DEATH_LOCK.get()"));
+        for (String live : List.of("MASTER_TOGGLE", "DEATH_LOCK", "HIDDEN_GEAR", "TOTEM_PROTECT",
+                                   "KILL_BLOCKER", "GAMEMODE_LOCK", "OP_LOCK", "PERMA_EFFECTS",
+                                   "VOID_RESCUE", "ANTI_TAMPER")) {
+            offenders.addAll(find(mixins, "ModConfig." + live + ".get()"));
+            offenders.addAll(find(gates, "ModConfig." + live + ".get()"));
+        }
 
         assertTrue(offenders.isEmpty(),
                 "a mixin reads the live config instead of the baseline -> " + offenders);
