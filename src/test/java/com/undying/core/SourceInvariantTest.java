@@ -144,4 +144,61 @@ class SourceInvariantTest {
         }
         assertTrue(missing.isEmpty(), "mixin classes exist but are not registered: " + missing);
     }
+
+    @Test
+    void aMixinOnASuperclassNeverCastsThisToAPlayerWithoutChecking() throws IOException {
+        // 2026-11-22: the game crashed on the first mob death —
+        //   ClassCastException: Sheep cannot be cast to ServerPlayer
+        // — because a guard was dropped while moving a decision up one class. This is a
+        // semantic mistake, so naming and structure checks cannot see it; what they can see is
+        // the shape: a cast to ServerPlayer inside a mixin that lives on LivingEntity/Entity must
+        // be preceded, in the same method, by a type check or by the guarded-helper call.
+        List<Path> mixins;
+        try (Stream<Path> walk = Files.walk(MAIN.resolve("mixin"))) {
+            mixins = walk.filter(p -> p.toString().endsWith(".java")).toList();
+        }
+
+        List<String> offenders = new ArrayList<>();
+        for (Path f : mixins) {
+            String src = read(f);
+
+            // `this` really is a ServerPlayer when the mixin sits on ServerPlayer itself.
+            java.util.regex.Matcher target =
+                    java.util.regex.Pattern.compile("@Mixin\\(\\s*([A-Za-z0-9_.]+)\\.class").matcher(src);
+            if (target.find() && target.group(1).endsWith("ServerPlayer")) continue;
+
+            int from = 0;
+            while (true) {
+                int cast = src.indexOf("(ServerPlayer) (Object) this", from);
+                if (cast < 0) break;
+                from = cast + 1;
+
+                int methodStart = lastMethodStart(src, cast);
+                String body = src.substring(methodStart, cast);
+                boolean guarded = body.contains("instanceof ServerPlayer")
+                        || body.contains("undying$isGuarded()");
+                if (!guarded) {
+                    int line = src.substring(0, cast).split("\n", -1).length;
+                    offenders.add(f.getFileName() + ":" + line);
+                }
+            }
+        }
+
+        assertTrue(offenders.isEmpty(),
+                "cast to ServerPlayer without a type check in the same method -> " + offenders);
+    }
+
+    /** Index of the nearest method declaration before {@code at}, or 0. */
+    private static int lastMethodStart(String src, int at) {
+        int best = 0;
+        int i = 0;
+        while (true) {
+            int idx = src.indexOf("undying$", i);
+            if (idx < 0 || idx > at) break;
+            int lineStart = src.lastIndexOf("\n", idx);
+            best = Math.max(best, lineStart < 0 ? 0 : lineStart);
+            i = idx + 1;
+        }
+        return best;
+    }
 }

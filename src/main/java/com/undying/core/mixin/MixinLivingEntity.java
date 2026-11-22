@@ -213,7 +213,14 @@ public abstract class MixinLivingEntity {
     private void undying$onDie(DamageSource src, CallbackInfo ci) {
         // Backstop: the real decision is made one class up (ServerPlayer.die), before the death
         // packet goes out. This one catches deaths that reach LivingEntity by another route.
-        if (com.undying.core.DeathIntercept.shouldCancel((ServerPlayer) (Object) this)) {
+        //
+        // The instanceof check is not optional: this mixin lives on LivingEntity, so `this` is a
+        // cow, a zombie, a sheep. Casting first crashed the game the moment any mob died
+        // (2026-11-22, ClassCastException: Sheep cannot be cast to ServerPlayer). The original
+        // version had this guard and it was dropped while moving the decision up a class —
+        // which is exactly why the guard now has a test.
+        if (!((Object) this instanceof ServerPlayer p)) return;
+        if (com.undying.core.DeathIntercept.shouldCancel(p)) {
             ci.cancel();
         }
     }
