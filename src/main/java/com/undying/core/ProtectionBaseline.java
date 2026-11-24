@@ -32,7 +32,13 @@ public final class ProtectionBaseline {
     /** Immutable once captured. */
     public record Values(boolean master, boolean deathLock, boolean killBlocker, boolean gameModeLock,
                          boolean hiddenGear, boolean totem, boolean voidRescue, boolean permaEffects,
-                         boolean opLock, boolean antiTamper) {
+                         boolean opLock, boolean antiTamper,
+                         // These three were left out of the first version. They are protection
+                         // switches all the same: the world guard decides whether a stranger can
+                         // end the session, the teleport guard whether the player can be displaced,
+                         // spawn protection whether the first six seconds are immune. Missing them
+                         // meant a mid-tick config flip still worked on exactly those three.
+                         boolean worldGuard, boolean teleportGuard, boolean spawnProtect) {
 
         static Values capture() {
             return new Values(
@@ -45,7 +51,10 @@ public final class ProtectionBaseline {
                     ModConfig.VOID_RESCUE.get(),
                     ModConfig.PERMA_EFFECTS.get(),
                     ModConfig.OP_LOCK.get(),
-                    ModConfig.ANTI_TAMPER.get());
+                    ModConfig.ANTI_TAMPER.get(),
+                    ModConfig.WORLD_GUARD.get(),
+                    ModConfig.TELEPORT_GUARD.get(),
+                    ModConfig.SPAWN_PROTECT.get());
         }
     }
 
@@ -114,6 +123,21 @@ public final class ProtectionBaseline {
     public static boolean opLock() {
         Values v = values;
         return v == null ? ModConfig.OP_LOCK.get() : v.opLock();
+    }
+
+    public static boolean worldGuard() {
+        Values v = values;
+        return v == null ? ModConfig.WORLD_GUARD.get() : v.worldGuard();
+    }
+
+    public static boolean teleportGuard() {
+        Values v = values;
+        return v == null ? ModConfig.TELEPORT_GUARD.get() : v.teleportGuard();
+    }
+
+    public static boolean spawnProtect() {
+        Values v = values;
+        return v == null ? ModConfig.SPAWN_PROTECT.get() : v.spawnProtect();
     }
 
     public static boolean antiTamper() {

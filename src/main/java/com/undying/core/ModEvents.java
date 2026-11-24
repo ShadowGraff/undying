@@ -82,6 +82,12 @@ public final class ModEvents {
     public void onQuit(PlayerEvent.PlayerLoggedOutEvent e) {
         // The single cleanup entry point: all player state hangs off PlayerState, one line clears it
         PlayerState.clear(e.getEntity().getUUID());
+
+        // Leaving the world: no baseline applies to the title screen any more, and the
+        // "disabled in multiplayer" notice should be allowed to appear again next session.
+        // (It had never been able to: resetNotification() existed but nothing called it.)
+        ProtectionBaseline.clear();
+        Environment.resetNotification();
     }
 
     // ═══════════ Inventory guard: what counts as a plausible cause ═══════════

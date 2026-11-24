@@ -19,6 +19,13 @@ public final class PlayerSession {
         if (!Environment.isAllowed(p)) return;
 
         // ── 1. Set up protection first ──
+        // Take (and mark online) the state FIRST: PlayerState.of() can evict offline entries when
+        // the table is full, and a state created a line later would be evictable before the rest of
+        // this method finished setting it up - the player would silently lose hidden slots and the
+        // spawn-protection window on a busy table.
+        PlayerState state = PlayerState.of(p);
+        state.online = true;
+
         HiddenSlots.init(p);          // hidden slots: totem / ward shield / hidden armor
         SpawnProtection.onJoin(p);    // spawn protection: record the moment of joining the world
 
@@ -28,7 +35,6 @@ public final class PlayerSession {
         // would overwrite a switch the player just changed in the panel with whatever the config
         // happened to say at that instant - which is exactly the "I turned it off and it came
         // back" bug, only with the sign flipped.
-        PlayerState state = PlayerState.of(p);
         if (!state.baselineCaptured) {
             ProtectionBaseline.capture();
             state.baselineCaptured = true;

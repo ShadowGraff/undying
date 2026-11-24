@@ -156,7 +156,7 @@ current implementation:
 | 环境门禁调用点 / Environment gate call sites | 31 |
 | 自检探针 / Self-check probes | 10 |
 | 主要类 / Main classes | 112（不含 17 个 mixin / excluding the 17 mixins） |
-| 单元测试 / Unit tests | 232（28 个测试类 / 28 test classes） |
+| 单元测试 / Unit tests | 234（28 个测试类 / 28 test classes） |
 
 **一个死亡要真正发生，需要上述拦截点同时失效。** 每个点都在代码里独立实现，不共享同一个开关。
 
@@ -258,15 +258,9 @@ player and subsequently a null-pointer exception in the chunk manager.
 
 **想死的话，退出模式就是死。** 关掉「不朽模式」（`O` 面板的总开关，或 `/antigrief master`），然后正常死亡；不想玩了就直接退出世界。
 
-**2.9.1 起移除了 `/antigrief die`。** 它原本是「哪怕所有防护都关着也能退出世界」的逃生口，但正因为它对谁都能用，也就成了别人最省事的刀——同进程的任何模组都能代跑它，让五道闸同时让路。现在没有这条通道：**要死，就先把防护关掉**，那是玩家自己做的、看得见的动作。
+**`/antigrief die` 已移除**——原因见下文「2.9.1：拿掉那把挂在门边的钥匙」。
 
-**Wanting to die means leaving immortal mode.** Turn the master switch off (O panel, or
-`/antigrief master`) and die normally, or just quit the world.
-
-**`/antigrief die` was removed in 2.9.1.** It was the escape hatch that worked no matter what - and
-that is exactly why it was the cheapest weapon for anyone else: any mod in the process could dispatch
-it and make five gates stand aside at once. There is no such channel now. To die, you turn protection
-off, which is a visible action the player takes.
+**`/antigrief die` is gone** — see "2.9.1: the key by the door is gone" below for why.
 
 ### 隐藏槽位 / Hidden slots
 
@@ -642,7 +636,7 @@ active".
 ### 2.9.1：拿掉那把挂在门边的钥匙 / the key by the door is gone
 
 `/antigrief die` 曾经是「哪怕所有防护都关着也能退出世界」的逃生口。问题在于它必须对**任何人**可用
-才有意义——包括同进程里的任何一个模组。它不需要赢过 12 个拦截点，只要替玩家签一张我们认的通行证。
+才有意义——包括同进程里的任何一个模组。它不需要赢过 13 个拦截点，只要替玩家签一张我们认的通行证。
 
 所以 2.9.1 把它删了，连同后面那两个「授权」信号（自杀标志、60 秒死亡许可）。现在不存在「被授权的死亡」：
 **要么防护关着自己正常死，要么死不了。**

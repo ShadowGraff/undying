@@ -10,6 +10,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -72,11 +73,35 @@ class BackupStoreTest {
 
     @Test
     void aFutureFormatIsRefusedRatherThanMisread() {
-        String text = "undying-backup-index v2\nlevel.dat\t100\t10\t-\n";
+        String text = "undying-backup-index v3\nlevel.dat\t100\t10\t-\t12-00-00\n";
         var decoded = BackupIndexCodec.decode(text);
 
-        assertTrue(decoded.versions().isEmpty(), "a v2 document must not be read as v1");
+        assertTrue(decoded.versions().isEmpty(), "a v3 document must not be read by a v2 reader");
         assertEquals(1, decoded.skipped(), "the document is refused as a whole, not line by line");
+    }
+
+    @Test
+    void aV1DocumentIsStillReadable() {
+        // Four columns, no copy name: written by 2.9.2 and earlier. Reading it must keep working,
+        // with the name falling back to the timestamp.
+        String text = "undying-backup-index v1\nlevel.dat\t100\t10\t-\n";
+        var decoded = BackupIndexCodec.decode(text);
+
+        assertEquals(1, decoded.versions().size());
+        assertEquals("level.dat", decoded.versions().get(0).path());
+        assertNull(decoded.versions().get(0).copyName());
+    }
+
+    @Test
+    void theCopyNameSurvivesARoundTrip() {
+        // The name is what makes the second copy in one second reachable; deriving it from the
+        // timestamp was the bug this column exists to fix.
+        var versions = List.of(new BackupVersion("level.dat", 100, 10, null, "12-00-00-1"));
+        String text = BackupIndexCodec.encode(versions);
+        var decoded = BackupIndexCodec.decode(text);
+
+        assertEquals(1, decoded.versions().size());
+        assertEquals("12-00-00-1", decoded.versions().get(0).copyName());
     }
 
     @Test

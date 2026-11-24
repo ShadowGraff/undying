@@ -187,7 +187,8 @@ public final class BackupService {
 
                     // Hash the copy, not the source: the point of the hash is to know later
                     // whether the file we stored is still the file we stored.
-                    BackupVersion v = new BackupVersion(f.path(), nowSeconds, f.size(), sha256(target));
+                    BackupVersion v = new BackupVersion(f.path(), nowSeconds, f.size(), sha256(target),
+                            target.getFileName().toString());
                     added.add(v);
                     index.add(v);
                     copied++;
@@ -307,8 +308,11 @@ public final class BackupService {
     }
 
     static Path copyPath(Path root, BackupVersion version) {
-        return root.resolve("files").resolve(version.path())
-                .resolve(stampOf(version.seconds()));
+        // Prefer the recorded name; fall back to the timestamp for index entries written before
+        // the name was stored. Deriving it was the bug: two copies in one second got "-1" on disk
+        // but the same timestamp in the index, so one record pointed at the other's file.
+        String name = version.copyName() != null ? version.copyName() : stampOf(version.seconds());
+        return root.resolve("files").resolve(version.path()).resolve(name);
     }
 
     /**

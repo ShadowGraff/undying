@@ -125,9 +125,9 @@ public abstract class MixinLivingEntity {
         if (p.isDeadOrDying()) return;
         // Health at or below the floor → this hit would be lethal → refuse it entirely
         if (p.getHealth() <= Const.DEATH_LOCK_HEALTH) {
-            if (ProtectionBaseline.hiddenGear() && com.undying.core.HiddenSlots.hasShield(p.getUUID())) {
-                Thorns.apply(p, src);
-            }
+            // No Thorns here: undying$guardWardShield injects into this same method at HEAD and
+            // already reflects when a ward shield is present. Doing it in both places made a hit
+            // at 1 HP reflect twice (double damage, double knockback, two attacker.hurt calls).
             p.level().broadcastEntityEvent(p, (byte) 35);
             cir.setReturnValue(false);
         }
@@ -155,7 +155,7 @@ public abstract class MixinLivingEntity {
     private float undying$clampDamage(float amount) {
         try {
             if (!ProtectionBaseline.master() || !ProtectionBaseline.deathLock()) return amount;
-            if (!ModConfig.CLAMP_DAMAGE.get()) return amount;
+            if (!ProtectionBaseline.master() || !ModConfig.CLAMP_DAMAGE.get()) return amount;
             if (!((Object) this instanceof ServerPlayer p)) return amount;
             if (!Environment.isAllowed(p)) return amount;   // single-player only
             if (p.isDeadOrDying()) return amount;           // real teardown: do not interfere

@@ -185,7 +185,7 @@ public final class PlayerState {
     // ══════════════ Inventory guard ══════════════
 
     /** Inventory watch state; null until the guard first runs for this player. */
-    public InventoryGuard.State inventoryGuard;
+    public volatile InventoryGuard.State inventoryGuard;
 
     // ══════════════ Teleport guard ══════════════
 

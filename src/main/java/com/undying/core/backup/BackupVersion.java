@@ -19,12 +19,37 @@ package com.undying.core.backup;
  * @param size    size in bytes, used for the storage budget
  * @param hash    lowercase hex SHA-256, or null when hashing was off
  */
-public record BackupVersion(String path, long seconds, long size, String hash) {
+public record BackupVersion(String path, long seconds, long size, String hash, String copyName) {
+
+    /**
+     * Four-argument form for callers that do not care where the copy landed (tests, and any
+     * index written before 2.9.3).
+     */
+    public BackupVersion(String path, long seconds, long size, String hash) {
+        this(path, seconds, size, hash, null);
+    }
 
     public BackupVersion {
         if (path == null || path.isEmpty()) throw new IllegalArgumentException("path");
         if (seconds < 0) throw new IllegalArgumentException("seconds");
         if (size < 0) throw new IllegalArgumentException("size");
+    }
+
+    /**
+     * Folder name of this copy under {@code files/<path>/}.
+     *
+     * <h3>Why this is stored instead of derived</h3>
+     * Two copies of the same file inside one second used to be distinguished on disk by a
+     * {@code -1}, {@code -2} suffix while the index only kept the second — so the second copy was
+     * written, listed, and then unreachable: the restore resolved both records to the same folder
+     * and the pruner deleted the wrong one. Storing the actual name makes the record point at the
+     * file it describes.
+     *
+     * <p>Nullable for indexes written before this field existed; those fall back to the timestamp,
+     * which is exactly what they were written with.
+     */
+    public String copyName() {
+        return copyName;
     }
 
     public boolean hasHash() {

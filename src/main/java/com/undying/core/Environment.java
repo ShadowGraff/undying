@@ -62,9 +62,18 @@ public final class Environment {
      * can exploit — a player would have to open the world to LAN and have someone connect
      * inside the same tick.
      */
-    private static MinecraftServer cachedServer;
-    private static long cachedTick = Long.MIN_VALUE;
-    private static boolean cachedResult;
+    /**
+     * One immutable answer, published through a single volatile reference.
+     *
+     * <p>The first version kept three separate static fields (server, tick, result). Those are
+     * written by the server thread and read by the network thread — {@code isAllowed} is called
+     * from {@code disconnect} handlers, which run on netty's threads — so a reader could see a
+     * new server with an old tick and mix two worlds' answers. That is the one value in the mod
+     * that decides whether protection applies at all.
+     */
+    private record Answer(MinecraftServer server, long tick, boolean allowed) {}
+
+    private static volatile Answer cached;
 
     public static boolean isAllowed(MinecraftServer server) {
         if (server == null) return false;
@@ -76,14 +85,13 @@ public final class Environment {
             tick = Long.MIN_VALUE;   // cannot key the memo: compute every time
         }
 
-        if (server == cachedServer && tick != Long.MIN_VALUE && tick == cachedTick) {
-            return cachedResult;
+        Answer hit = cached;
+        if (hit != null && hit.server() == server && tick != Long.MIN_VALUE && tick == hit.tick()) {
+            return hit.allowed();
         }
 
         boolean result = computeAllowed(server);
-        cachedServer = server;
-        cachedTick = tick;
-        cachedResult = result;
+        cached = new Answer(server, tick, result);
         return result;
     }
 

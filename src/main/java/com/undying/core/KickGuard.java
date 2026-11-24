@@ -55,7 +55,7 @@ public final class KickGuard {
     private static final int MAX_REASON = 300;
 
     private static boolean enabled(ServerPlayer p) {
-        return ModConfig.WORLD_GUARD.get() && Environment.isAllowed(p);
+        return ProtectionBaseline.worldGuard() && Environment.isAllowed(p);
     }
 
     // ══════════════ Interception ══════════════
@@ -99,7 +99,7 @@ public final class KickGuard {
     public static boolean interceptStopServer(MinecraftServer server) {
         try {
             if (server == null) return false;
-            if (!ModConfig.WORLD_GUARD.get()) return false;
+            if (!ProtectionBaseline.worldGuard()) return false;
             if (Boolean.TRUE.equals(BYPASS.get())) return false;
             if (!server.isSingleplayer()) return false;
 

@@ -66,13 +66,28 @@ public abstract class MixinCommands {
         if (t.isEmpty()) return false;
 
         String[] parts = t.split("\\s+");
+
+        boolean executeChain = false;
+        for (String p : parts) {
+            String seg = p.toLowerCase();
+            if (seg.equals("execute") || seg.equals("minecraft:execute")) {
+                executeChain = true;
+                break;
+            }
+        }
+
         for (int i = 0; i < parts.length; i++) {
             String seg = parts[i].toLowerCase();
             boolean isKill = seg.equals("kill") || seg.equals("minecraft:kill");
             if (!isKill) continue;
 
             if (i == 0) return true;                                   // bare /kill
-            if (parts[i - 1].equalsIgnoreCase("run")) return true;      // /execute ... run kill
+
+            // Only "run kill" inside an execute chain. The first version accepted any "run kill"
+            // pair, so "/say run kill" and "/title @s title run kill" were cancelled as if they
+            // were lethal - the blocked kill was a false positive, and the player's message never
+            // appeared. Requiring the chain to actually start with execute costs one scan.
+            if (executeChain && parts[i - 1].equalsIgnoreCase("run")) return true;
         }
         return false;
     }

@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.undying.core.IntegrityGuard;
+import com.undying.core.ModLog;
 
 /**
  * Puts stored copies back into the world. <b>This is the only code in the mod that writes into a
@@ -48,6 +49,49 @@ public final class WorldRestore {
     private WorldRestore() {}
 
     public static final String PRE_RESTORE_DIR = "pre-restore";
+
+    /**
+     * How many "before the restore" snapshots to keep.
+     *
+     * <p>They used to accumulate forever. Even after they stopped counting against the backup
+     * budget (2.9.2), a player who restores five times kept five full copies of every file that
+     * was replaced - invisible in the UI, never pruned, and the only way out was to find the
+     * folder by hand. Three is enough to undo a mistake and one step further back.
+     */
+    private static final int KEEP_ASIDE = 3;
+
+    /** Delete the oldest aside folders beyond {@code keep}. */
+    private static void pruneAside(Path root, int keep) {
+        try {
+            Path dir = root.resolve(PRE_RESTORE_DIR);
+            if (!Files.isDirectory(dir)) return;
+            var stamps = new java.util.ArrayList<Path>();
+            try (var list = Files.list(dir)) {
+                list.filter(Files::isDirectory).forEach(stamps::add);
+            }
+            if (stamps.size() <= keep) return;
+            stamps.sort(java.util.Comparator.comparing(p -> p.getFileName().toString()));
+            for (int i = 0; i < stamps.size() - keep; i++) {
+                deleteTree(stamps.get(i));
+            }
+        } catch (Throwable t) {
+            ModLog.swallowed("WorldRestore.pruneAside", t);
+        }
+    }
+
+    private static void deleteTree(Path dir) {
+        try (var walk = Files.walk(dir)) {
+            walk.sorted(java.util.Comparator.reverseOrder()).forEach(p -> {
+                try {
+                    Files.deleteIfExists(p);
+                } catch (Throwable ignored) {
+                    // one stubborn file must not stop the cleanup
+                }
+            });
+        } catch (Throwable t) {
+            ModLog.swallowed("WorldRestore.deleteTree", t);
+        }
+    }
 
     /**
      * @param planned      files the plan wanted to write
@@ -168,6 +212,7 @@ public final class WorldRestore {
                         plan.restored() - written.size(), true, aside, 0, false);
             }
 
+            pruneAside(root, KEEP_ASIDE);
             return new Outcome(plan.restored(), written.size(), plan.keptCurrent(), 0, false,
                     aside, mismatch, false);
 

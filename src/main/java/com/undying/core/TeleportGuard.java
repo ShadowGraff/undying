@@ -118,7 +118,7 @@ public final class TeleportGuard {
             if (p == null || level == null) return false;
             long tick = p.server.getTickCount();
             if (!TeleportPolicy.shouldIntercept(
-                    ModConfig.TELEPORT_GUARD.get(),
+                    ProtectionBaseline.teleportGuard(),
                     Environment.isAllowed(p),
                     Boolean.TRUE.equals(BYPASS.get()))) {
                 return false;

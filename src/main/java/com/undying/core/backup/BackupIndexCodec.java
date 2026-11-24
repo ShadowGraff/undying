@@ -33,7 +33,10 @@ public final class BackupIndexCodec {
     private BackupIndexCodec() {}
 
     /** Present so a future format change can be detected instead of misread. */
-    public static final String HEADER = "undying-backup-index v1";
+    public static final String HEADER = "undying-backup-index v2";
+
+    /** Still readable: v1 had no copy-name column. */
+    private static final String HEADER_V1 = "undying-backup-index v1";
 
     private static final char SEP = '\t';
     private static final String NO_HASH = "-";
@@ -47,7 +50,8 @@ public final class BackupIndexCodec {
                 sb.append(v.path()).append(SEP)
                         .append(v.seconds()).append(SEP)
                         .append(v.size()).append(SEP)
-                        .append(v.hasHash() ? v.hash() : NO_HASH)
+                        .append(v.hasHash() ? v.hash() : NO_HASH).append(SEP)
+                        .append(v.copyName() == null ? NO_HASH : v.copyName())
                         .append('\n');
             }
         }
@@ -71,7 +75,7 @@ public final class BackupIndexCodec {
                 // header is not, because the field order could have changed. Refusing the whole
                 // document is the safe direction: reading v2 fields as v1 would put wrong
                 // timestamps on copies, and a wrong timestamp silently restores the wrong moment.
-                if (line.equals(HEADER)) continue;
+                if (line.equals(HEADER) || line.equals(HEADER_V1)) continue;
                 if (line.startsWith("undying-backup-index")) {
                     return new Decoded(List.of(), 1);
                 }
@@ -99,10 +103,21 @@ public final class BackupIndexCodec {
             long seconds = Long.parseLong(line.substring(a + 1, b));
             long size = Long.parseLong(line.substring(b + 1, c));
 
-            String hash = line.substring(c + 1);
+            String tail = line.substring(c + 1);
+            int d = tail.indexOf(SEP);
+            String hash;
+            String copyName = null;
+            if (d < 0) {
+                hash = tail;                       // v1 line: no copy-name column
+            } else {
+                hash = tail.substring(0, d);
+                copyName = tail.substring(d + 1);
+                if (NO_HASH.equals(copyName) || copyName.isEmpty()) copyName = null;
+                else if (!SafePath.isSafe(copyName)) return null;   // a name, not a path
+            }
             if (NO_HASH.equals(hash) || hash.isEmpty()) hash = null;
 
-            return new BackupVersion(path, seconds, size, hash);
+            return new BackupVersion(path, seconds, size, hash, copyName);
         } catch (NumberFormatException | IndexOutOfBoundsException e) {
             return null;
         }

@@ -27,7 +27,7 @@ public final class SpawnProtection {
 
     /** Whether the player is currently inside the spawn protection window */
     public static boolean isProtected(ServerPlayer p) {
-        if (!ModConfig.SPAWN_PROTECT.get()) return false;
+        if (!ProtectionBaseline.spawnProtect()) return false;
         PlayerState s = PlayerState.find(p.getUUID());
         if (s == null || s.joinTick < 0) return false;
         return withinWindow(p, s);
