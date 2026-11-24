@@ -25,7 +25,6 @@ Everything this mod does, at a glance. Each item is detailed in its own section 
 | 飞行 / Flight | 不朽模式下双击空格起飞，再双击落地 / Double-tap jump to fly while immortal |
 | 物品栏预览 / Inventory preview | 长按 `I` 冻结游戏，列出背包自上次查看以来的变化 / Hold `I` to list what changed |
 | 快捷控制 / Quick controls | O 面板里直接设置时间、天气、游戏模式 / Time, weather and game mode from the panel |
-| 指令审计 / Command audit | 左上角小窗显示每条执行的指令，常见指令翻成一句话 / Every command, translated |
 | 透视 / Outline | 隔墙显示生物轮廓，可选目标、时长、半径与碰撞箱 / See creatures through walls, with target, duration and hitbox options |
 | 出生保护 / Spawn protection | 进入世界后短暂无敌 / Brief invulnerability after entering the world |
 
@@ -60,7 +59,7 @@ Everything this mod does, at a glance. Each item is detailed in its own section 
 
 | 功能 / Feature | 作用 / What it does |
 |---|---|
-| 配置界面 / Config screen | `O` 键打开，28 个开关，另有领域白名单、透视、快捷控制、存档救援四页；键位可在「控制 → 按键绑定」里改 / Opened with `O`, twenty-eight switches plus four sub-pages |
+| 配置界面 / Config screen | `O` 键打开，27 个开关，另有领域白名单、透视、快捷控制、存档救援四页；键位可在「控制 → 按键绑定」里改 / Opened with `O`, twenty-seven switches plus four sub-pages |
 | 领域白名单 / Domain allow-list | 按类别勾选 + 按实体搜索勾选 / Category toggles plus a searchable entity list |
 | 语言 / Language | 界面随游戏语言切换；聊天中英并排；配置注释双语 / GUI follows the game language; chat shows both; bilingual config comments |
 | 物品栏提示 / Inventory prompt | 左下角非阻塞面板，`Y×3` 回滚 / `N×3` 忽略 / Non-blocking corner panel, `Y×3` to roll back, `N×3` to ignore |
@@ -156,7 +155,7 @@ current implementation:
 | 环境门禁调用点 / Environment gate call sites | 31 |
 | 自检探针 / Self-check probes | 10 |
 | 主要类 / Main classes | 112（不含 17 个 mixin / excluding the 17 mixins） |
-| 单元测试 / Unit tests | 234（28 个测试类 / 28 test classes） |
+| 单元测试 / Unit tests | 222（27 个测试类 / 27 test classes） |
 
 **一个死亡要真正发生，需要上述拦截点同时失效。** 每个点都在代码里独立实现，不共享同一个开关。
 
@@ -650,12 +649,12 @@ not happen. The cost — no suicide while immortal — is a contradiction remove
 ## 关于常驻 / About keeping it installed
 
 **建议常驻。** 关掉总开关（`masterToggle`）之后，本模组不再介入任何游戏逻辑：不拦伤害、不改血量、
-不碰物品栏、不发任何封包。默认关闭的那些低频功能（指令审计、威胁扫描、世界守卫）在关闭状态下
+不碰物品栏、不发任何封包。默认关闭的那些低频功能（威胁扫描、世界守卫）在关闭状态下
 一次也不会运行。
 
 **Recommended as a permanent install.** With the master switch off, the mod does not touch game
 logic at all: no damage interception, no health writes, no inventory access, no packets. Features
-that are off by default (command audit, threat scan, world guard) do not run at all while off.
+that are off by default (threat scan, world guard) do not run at all while off.
 
 **移除也是无害的。** 卸载模组后游戏逻辑没有任何残留：没有自定义方块、物品、维度或实体，也没有
 需要迁移的注册表项；存档可以原样用原版或别的整合包打开。
@@ -747,7 +746,7 @@ broken UI is more disruptive than an un-banned button), while the gate fails clo
 
 ### 配置界面 / Config screen
 
-`O` 键打开（默认键位，可在「控制 → 按键绑定 → Undying」里改）。28 个开关按窗口大小自动排开，状态用颜色区分；底部五个入口分别进入「领域白名单」「透视」「快捷控制」「存档救援」和关闭界面。所有改动即时写入 TOML，没有「保存」按钮——需要二次确认的勾选框是最容易被存错的东西。
+`O` 键打开（默认键位，可在「控制 → 按键绑定 → Undying」里改）。27 个开关按窗口大小自动排开，状态用颜色区分；底部五个入口分别进入「领域白名单」「透视」「快捷控制」「存档救援」和关闭界面。所有改动即时写入 TOML，没有「保存」按钮——需要二次确认的勾选框是最容易被存错的东西。
 
 Opened with `O` (a real key binding, so it appears under Controls → Key Binds → Undying and can be rebound). Twenty-eight switches, laid out to fit whatever window height they are given; the five buttons at the bottom open the domain allow-list editor, the outline page, the quick-controls page, the save-rescue page, or close the screen. Changes are written to the TOML immediately — there is no Save button, because a checkbox that needs a second confirmation is the thing that gets saved wrongly.
 

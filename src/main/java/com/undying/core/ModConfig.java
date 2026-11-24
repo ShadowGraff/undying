@@ -68,7 +68,6 @@ public class ModConfig {
     public static final ForgeConfigSpec.BooleanValue QUICK_CONTROLS;
 
     // ── Command audit (show every executed command, translated) ──
-    public static final ForgeConfigSpec.BooleanValue COMMAND_AUDIT;
 
     // ── Glow (see creatures through walls) ──
     public static final ForgeConfigSpec.BooleanValue GLOW;
@@ -341,28 +340,6 @@ public class ModConfig {
                 "不受不朽模式开关限制：普通游玩时想要白天也是合理的。但和本项目其它功能一样，",
                 "只在单人世界生效。")
                 .define("enabled", true);
-        b.pop();
-
-        // ── Command audit ──
-        b.comment("=== Command audit (show what ran, in one sentence) ===",
-                        "=== 指令审计（用一句话说明刚执行了什么）===")
-                .push("commandAudit");
-        COMMAND_AUDIT = b.comment(
-                "Shows every executed command in a small translucent window in the top-left,",
-                "with the common ones translated into a plain sentence. Read-only: nothing is",
-                "blocked, and no command is labelled suspicious.",
-                "Commands that nobody typed are also written to the rolling report, because that",
-                "is the case worth reconstructing afterwards.",
-                "在左上角的小透明窗口里显示每一条执行的指令，常见指令会翻成一句话。",
-                "纯只读：不拦截任何东西，也不给任何指令贴「可疑」标签。",
-                "非玩家发起的指令会额外写进滚动报告——那才是事后需要还原的部分。",
-                "",
-                "默认关闭：实测下来，左上角持续有文字会明显干扰视野与瞄准。",
-                "需要时再打开，或把窗口当成临时诊断工具而不是常驻 HUD。",
-                "Default OFF after measuring it in play: a permanent corner window covers the",
-                "crosshair area and distracts. Turn it on when you want to see what is running,",
-                "not as a HUD you leave on.")
-                .define("enabled", false);
         b.pop();
 
         // ── Glow ──

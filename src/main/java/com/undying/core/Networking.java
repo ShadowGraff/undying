@@ -50,8 +50,6 @@ public class Networking {
                 AcknowledgeInventoryMessage::handle);
         CHANNEL.registerMessage(8, QuickActionMessage.class,
                 QuickActionMessage::encode, QuickActionMessage::decode, QuickActionMessage::handle);
-        CHANNEL.registerMessage(9, CommandAuditMessage.class,
-                CommandAuditMessage::encode, CommandAuditMessage::decode, CommandAuditMessage::handle);
         CHANNEL.registerMessage(10, GlowMessage.class,
                 GlowMessage::encode, GlowMessage::decode, GlowMessage::handle);
         CHANNEL.registerMessage(11, ConfigToggledMessage.class,
@@ -380,37 +378,6 @@ public class Networking {
     // ── Command audit ──
 
     /** S2C: one command just ran, already translated into a sentence. */
-    public static class CommandAuditMessage {
-        private final String text;
-
-        public CommandAuditMessage(String text) {
-            this.text = text;
-        }
-
-        public static void encode(CommandAuditMessage m, FriendlyByteBuf b) {
-            b.writeUtf(m.text, 256);
-        }
-
-        public static CommandAuditMessage decode(FriendlyByteBuf b) {
-            return new CommandAuditMessage(b.readUtf(256));
-        }
-
-        public static void handle(CommandAuditMessage m, Supplier<NetworkEvent.Context> ctx) {
-            ctx.get().enqueueWork(() -> {
-                if (ctx.get().getDirection().getReceptionSide().isClient()) {
-                    DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                            () -> () -> ClientHooks.showCommandAudit(m.text));
-                }
-            });
-            ctx.get().setPacketHandled(true);
-        }
-    }
-
-    /** Server thread. */
-    public static void sendCommandAudit(ServerPlayer p, String text) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> p), new CommandAuditMessage(text));
-    }
-
     // ── Glow ──
 
     /**

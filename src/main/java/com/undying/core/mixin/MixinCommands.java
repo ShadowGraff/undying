@@ -3,7 +3,6 @@ package com.undying.core.mixin;
 import com.undying.core.IntegrityGuard;
 import com.undying.core.ProtectionBaseline;
 import com.undying.core.ModConfig;
-import com.undying.core.CommandAudit;
 import com.undying.core.ModLog;
 import com.undying.core.Notify;
 import com.undying.core.TeleportGuard;
@@ -119,9 +118,8 @@ public abstract class MixinCommands {
             else who = src.getEntity().getClass().getSimpleName();
             TeleportGuard.noteCommand(src.getServer().getTickCount(), cmd, who);
 
-            // Same place, same reason: this is the only point in the game that sees every
-            // command, whoever ran it.
-            CommandAudit.record(src.getServer(), cmd, fromPlayer);
+            // Command audit used to record here. Removed in 2.9.4: it never displayed anything
+            // on this setup, and a feature that only its own author can see is weight.
         } catch (Throwable t) {
             ModLog.swallowed("MixinCommands.noteCommand", t);
         }

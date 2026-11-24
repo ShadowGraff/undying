@@ -75,7 +75,6 @@ public class UndyingConfigScreen extends Screen {
         add("worldBackup", ModConfig.WORLD_BACKUP);
         add("flight", ModConfig.FLIGHT);
         add("quickControls", ModConfig.QUICK_CONTROLS);
-        add("commandAudit", ModConfig.COMMAND_AUDIT);
         add("glow", ModConfig.GLOW);
         add("domain", ModConfig.DOMAIN_ENABLED);
     }

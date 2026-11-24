@@ -61,9 +61,6 @@ public class ClientHooks {
     }
 
     /** One command just ran; put it in the corner window. */
-    public static void showCommandAudit(String text) {
-        com.undying.core.client.CommandAuditHud.push(text);
-    }
 
     /**
      * Is this world currently published to LAN?
